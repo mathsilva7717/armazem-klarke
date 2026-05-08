@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: `http://${window.location.hostname}:3002/api`,
+  baseURL: `http://${window.location.hostname}:3005/api`,
 });
 
 // Interceptor to add token to requests

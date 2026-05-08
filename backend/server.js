@@ -7,7 +7,7 @@ const jwt = require('jsonwebtoken');
 require('dotenv').config();
 
 const app = express();
-const PORT = process.env.PORT || 3002; // Use a different port than the main backend
+const PORT = process.env.PORT || 3005; // Use port 3005 for the warehouse module
 const JWT_SECRET = process.env.JWT_SECRET || 'armazem-secret-key-123';
 
 app.use(cors());

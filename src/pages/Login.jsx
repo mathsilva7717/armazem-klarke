@@ -20,6 +20,8 @@ const Login = () => {
       localStorage.setItem('armazem_user', JSON.stringify(response.data.user));
       localStorage.setItem('armazem_auth', 'true');
       
+      console.log('Dados do usuário recebidos:', response.data.user);
+      
       toast.success(`Bem-vindo, ${response.data.user.name}!`);
       
       if (response.data.user.mustChangePassword) {

@@ -100,13 +100,16 @@ app.post('/api/login', (req, res) => {
     if (!validPassword) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
+    const mustChange = !!user.must_change_password;
+    console.log(`Usuário ${username} logado. Precisa trocar senha? ${mustChange}`);
+    
     res.json({ 
       token, 
       user: { 
         id: user.id, 
         username: user.username, 
         name: user.name,
-        mustChangePassword: !!user.must_change_password 
+        mustChangePassword: mustChange 
       } 
     });
   } catch (err) {

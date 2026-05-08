@@ -57,6 +57,18 @@ const Users = () => {
     }
   };
 
+  const handleDelete = async (id) => {
+    if (window.confirm('Tem certeza que deseja excluir este operador?')) {
+      try {
+        await api.delete(`/users/${id}`);
+        toast.success('Usuário excluído!');
+        fetchUsers();
+      } catch (error) {
+        toast.error(error.response?.data?.error || 'Erro ao excluir usuário.');
+      }
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <header style={{ 
@@ -177,12 +189,34 @@ const Users = () => {
                 {users.map(u => (
                   <tr key={u.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
                     <td data-label="Nome" style={{ padding: '12px', fontWeight: '600' }}>{u.name}</td>
-                    <td data-label="Usuário" style={{ padding: '12px' }}>{u.username}</td>
+                    <td data-label="Usuário" style={{ padding: '12px' }}>
+                      {u.username}
+                      {u.must_change_password === 1 && (
+                        <span style={{ 
+                          marginLeft: '8px', 
+                          fontSize: '0.6rem', 
+                          background: 'rgba(234, 179, 8, 0.2)', 
+                          color: '#eab308', 
+                          padding: '2px 6px',
+                          border: '1px solid #eab308'
+                        }}>SENHA PROVISÓRIA</span>
+                      )}
+                    </td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
                       {u.username !== 'admin' && (
                         <button 
-                          style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'not-allowed' }}
-                          title="Exclusão desabilitada nesta versão"
+                          onClick={() => handleDelete(u.id)}
+                          style={{ 
+                            background: 'transparent', 
+                            border: 'none', 
+                            color: '#ef4444', 
+                            cursor: 'pointer',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'flex-end',
+                            width: '100%'
+                          }}
+                          title="Excluir Operador"
                         >
                           <Trash2 size={16} />
                         </button>

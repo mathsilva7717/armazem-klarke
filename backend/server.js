@@ -153,7 +153,7 @@ app.post('/api/users', async (req, res) => {
   const hashedPassword = bcrypt.hashSync(password, 10);
   
   try {
-    const info = db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)").run(username, hashedPassword, name);
+    const info = db.prepare("INSERT INTO users (username, password, name, must_change_password) VALUES (?, ?, ?, ?)").run(username, hashedPassword, name, 1);
     res.status(201).json({ id: info.lastInsertRowid, username, name });
   } catch (err) {
     res.status(500).json({ error: 'Usuário já existe' });
@@ -179,6 +179,23 @@ app.get('/api/users', authenticateToken, (req, res) => {
   try {
     const rows = db.prepare("SELECT id, username, name, must_change_password, created_at FROM users").all();
     res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Delete user
+app.delete('/api/users/:id', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  
+  // Impedir exclusão do admin (ID 1)
+  if (parseInt(id) === 1) {
+    return res.status(403).json({ error: 'O administrador principal não pode ser excluído.' });
+  }
+
+  try {
+    db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    res.json({ message: 'Usuário excluído com sucesso!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

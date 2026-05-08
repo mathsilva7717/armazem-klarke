@@ -19,8 +19,14 @@ const Login = () => {
       localStorage.setItem('armazem_token', response.data.token);
       localStorage.setItem('armazem_user', JSON.stringify(response.data.user));
       localStorage.setItem('armazem_auth', 'true');
+      
       toast.success(`Bem-vindo, ${response.data.user.name}!`);
-      navigate('/');
+      
+      if (response.data.user.mustChangePassword) {
+        navigate('/reset-password');
+      } else {
+        navigate('/');
+      }
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao conectar ao servidor.');
     } finally {

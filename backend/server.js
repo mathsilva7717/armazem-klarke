@@ -27,6 +27,7 @@ function initDb() {
       username TEXT UNIQUE,
       password TEXT,
       name TEXT,
+      must_change_password INTEGER DEFAULT 1,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -59,7 +60,7 @@ function initDb() {
     const row = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
     if (!row) {
         const hashedPassword = bcrypt.hashSync('senha123', 10);
-        db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém');
+        db.prepare("INSERT INTO users (username, password, name, must_change_password) VALUES (?, ?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém', 0);
         console.log('Usuário admin padrão criado: admin / senha123');
     }
 }
@@ -91,7 +92,15 @@ app.post('/api/login', (req, res) => {
     if (!validPassword) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
-    res.json({ token, user: { id: user.id, username: user.username, name: user.name } });
+    res.json({ 
+      token, 
+      user: { 
+        id: user.id, 
+        username: user.username, 
+        name: user.name,
+        mustChangePassword: !!user.must_change_password 
+      } 
+    });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -140,10 +149,24 @@ app.post('/api/users', async (req, res) => {
   }
 });
 
+// Change Password
+app.post('/api/change-password', authenticateToken, (req, res) => {
+  const { newPassword } = req.body;
+  const userId = req.user.id;
+  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+  try {
+    db.prepare("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?").run(hashedPassword, userId);
+    res.json({ message: 'Senha alterada com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all users
 app.get('/api/users', authenticateToken, (req, res) => {
   try {
-    const rows = db.prepare("SELECT id, username, name, created_at FROM users").all();
+    const rows = db.prepare("SELECT id, username, name, must_change_password, created_at FROM users").all();
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

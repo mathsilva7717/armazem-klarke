@@ -7,6 +7,7 @@ import StockExit from './pages/StockExit';
 import Users from './pages/Users';
 import Labels from './pages/Labels';
 import ProductSearch from './pages/ProductSearch';
+import ResetPassword from './pages/ResetPassword';
 
 function App() {
   // Simple auth check mock
@@ -18,6 +19,12 @@ function App() {
     if (!isAuthenticated()) {
       return <Navigate to="/login" replace />;
     }
+
+    const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
+    if (user.mustChangePassword && window.location.pathname !== '/reset-password') {
+      return <Navigate to="/reset-password" replace />;
+    }
+
     return children;
   };
 
@@ -32,6 +39,7 @@ function App() {
       }} />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route path="/reset-password" element={<ProtectedRoute><ResetPassword /></ProtectedRoute>} />
         <Route 
           path="/" 
           element={

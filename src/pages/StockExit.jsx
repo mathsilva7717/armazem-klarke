@@ -1,0 +1,364 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { LogOut, Package, Hash, ShoppingBag, Calendar, Download, Plus, Trash2, Users, Printer, Search, ArrowLeft } from 'lucide-react';
+import toast from 'react-hot-toast';
+import api from '../api';
+
+const StockExit = () => {
+  const navigate = useNavigate();
+  const [exits, setExits] = useState([]);
+  const [filterDates, setFilterDates] = useState({
+    start: new Date().toISOString().split('T')[0],
+    end: new Date().toISOString().split('T')[0]
+  });
+  const [formData, setFormData] = useState({
+    sku: '',
+    quantity: '',
+    store: '',
+    date: new Date().toISOString().split('T')[0]
+  });
+
+  const stores = [
+    'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',
+    'LOJA TUDO POR 10 OU 20 - SÃO VICENTE'
+  ];
+
+  const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
+
+  useEffect(() => {
+    fetchExits();
+  }, []);
+
+  const fetchExits = async () => {
+    try {
+      const response = await api.get('/exits');
+      setExits(response.data);
+    } catch (error) {
+      toast.error('Erro ao carregar histórico.');
+    }
+  };
+
+  const filteredExits = exits.filter(e => {
+    const exitDate = e.exit_date;
+    return exitDate >= filterDates.start && exitDate <= filterDates.end;
+  });
+
+  const handleLogout = () => {
+    localStorage.removeItem('armazem_auth');
+    localStorage.removeItem('armazem_token');
+    localStorage.removeItem('armazem_user');
+    toast.success('Sessão encerrada.');
+    navigate('/login');
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    setFormData(prev => ({ ...prev, [name]: value }));
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      const response = await api.post('/exits', formData);
+      const newEntry = {
+        ...response.data,
+        operator_name: user.name || user.username
+      };
+      setExits([newEntry, ...exits]);
+      setFormData({
+        sku: '',
+        quantity: '',
+        store: formData.store,
+        date: formData.date
+      });
+      
+      // Haptic feedback for mobile
+      if (window.navigator && window.navigator.vibrate) {
+        window.navigator.vibrate(50);
+      }
+      
+      toast.success('Saída registrada com sucesso!');
+      fetchExits();
+    } catch (error) {
+      toast.error('Erro ao registrar saída.');
+    }
+  };
+
+  const removeExit = (id) => {
+    setExits(exits.filter(e => e.id !== id));
+    toast.error('Registro removido.');
+  };
+
+  const exportToCSV = () => {
+    if (filteredExits.length === 0) {
+      toast.error('Não há dados filtrados para exportar.');
+      return;
+    }
+
+    const headers = ['ID', 'SKU', 'Quantidade', 'Loja', 'Data', 'Operador'];
+    // BOM para o Excel reconhecer acentos e caracteres especiais (UTF-8)
+    const BOM = '\uFEFF';
+    const csvContent = BOM + [
+      headers.join(';'),
+      ...filteredExits.map(e => [e.id, e.sku, e.quantity, `"${e.store}"`, e.exit_date, `"${e.operator_name || 'Admin'}"`].join(';'))
+    ].join('\n');
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `relatorio_saidas_${filterDates.start}_ate_${filterDates.end}.csv`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast.success('Planilha baixada!');
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', padding: '20px' }}>
+      {/* Header */}
+      <header style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        maxWidth: '1200px', 
+        margin: '0 auto 16px',
+        padding: '16px 0',
+        borderBottom: '2px solid var(--primary)',
+        flexWrap: 'wrap',
+        gap: '16px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={() => navigate('/')}
+            style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Saída de Estoque</h2>
+        </div>
+        
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ textAlign: 'right', display: 'none', display: 'block' }}>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>Operador</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '700' }}>{user.name || user.username}</p>
+          </div>
+
+          <button 
+            onClick={handleLogout} 
+            style={{ 
+              background: 'transparent', 
+              color: 'var(--text-muted)', 
+              border: '1px solid var(--border)', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.8rem',
+              padding: '8px 12px',
+              fontWeight: '600'
+            }}
+          >
+            Sair <LogOut size={16} />
+          </button>
+        </div>
+      </header>
+
+      <main style={{ 
+        maxWidth: '1200px', 
+        margin: '0 auto', 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
+        gap: '24px' 
+      }}>
+        {/* Form Column */}
+        <section className="glass-card animate-fade-in" style={{ padding: '32px', height: 'fit-content' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Plus size={20} color="var(--primary)" /> Nova Saída
+            </h3>
+          </div>
+          
+          <form onSubmit={handleSubmit}>
+            <div className="input-group">
+              <label><Hash size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> SKU do Produto</label>
+              <input 
+                name="sku"
+                type="text" 
+                inputMode="numeric"
+                pattern="[0-9]*"
+                placeholder="Ex: 123456" 
+                value={formData.sku}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="input-group">
+              <label><Package size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Quantidade</label>
+              <input 
+                name="quantity"
+                type="number" 
+                inputMode="numeric"
+                placeholder="0" 
+                value={formData.quantity}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="input-group">
+              <label><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Loja de Destino</label>
+              <select name="store" value={formData.store} onChange={handleInputChange} required>
+                <option value="">Selecione a loja</option>
+                {stores.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+            </div>
+
+            <div className="input-group">
+              <label><Calendar size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Data</label>
+              <input 
+                name="date"
+                type="date" 
+                value={formData.date}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div style={{ display: 'flex', gap: '12px' }}>
+              <button type="submit" className="btn-primary" style={{ flex: 2 }}>
+                <Plus size={18} /> Registrar
+              </button>
+              <button 
+                type="button" 
+                onClick={() => setFormData({ sku: '', quantity: '', store: '', date: new Date().toISOString().split('T')[0] })}
+                className="btn-primary" 
+                style={{ flex: 1, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
+              >
+                Limpar
+              </button>
+            </div>
+          </form>
+        </section>
+
+        {/* Table Column */}
+        <section className="glass-card animate-fade-in" style={{ padding: '32px', animationDelay: '0.1s' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <Package size={20} color="var(--primary)" /> Histórico de Saídas
+            </h3>
+            <button onClick={exportToCSV} className="btn-primary" style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '8px 16px', fontSize: '0.8rem' }}>
+              <Download size={16} /> Exportar Planilha
+            </button>
+          </div>
+
+          {/* FILTRO DE DATAS */}
+          <div style={{ 
+            display: 'flex', 
+            gap: '12px', 
+            marginBottom: '24px', 
+            padding: '16px', 
+            background: 'rgba(255,255,255,0.03)', 
+            border: '1px solid var(--border)',
+            borderRadius: '4px',
+            alignItems: 'flex-end',
+            flexWrap: 'wrap'
+          }}>
+            <div style={{ flex: 1, minWidth: '140px' }}>
+              <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>DE:</label>
+              <input 
+                type="date" 
+                value={filterDates.start}
+                onChange={(e) => setFilterDates({...filterDates, start: e.target.value})}
+                style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
+              />
+            </div>
+            <div style={{ flex: 1, minWidth: '140px' }}>
+              <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>ATÉ:</label>
+              <input 
+                type="date" 
+                value={filterDates.end}
+                onChange={(e) => setFilterDates({...filterDates, end: e.target.value})}
+                style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
+              />
+            </div>
+            <button 
+              onClick={fetchExits}
+              style={{ background: 'var(--border)', color: '#fff', border: 'none', padding: '9px 12px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '700' }}
+            >
+              ATUALIZAR
+            </button>
+          </div>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>SKU</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Qtd</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Operador</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data</th>
+                  <th style={{ padding: '12px' }}></th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredExits.length === 0 ? (
+                  <tr>
+                    <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                      Nenhuma saída encontrada para este período.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredExits.map(e => (
+                    <tr key={e.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
+                      <td data-label="SKU" style={{ padding: '12px', fontWeight: '600' }}>{e.sku}</td>
+                      <td data-label="Qtd" style={{ padding: '12px' }}>{e.quantity}</td>
+                      <td data-label="Loja" style={{ padding: '12px' }}>{e.store}</td>
+                      <td data-label="Operador" style={{ padding: '12px', color: 'var(--primary)' }}>{e.operator_name || 'Admin'}</td>
+                      <td data-label="Data" style={{ padding: '12px', color: 'var(--text-muted)' }}>{e.exit_date}</td>
+                      <td style={{ padding: '12px', textAlign: 'right' }}>
+                        <button 
+                          onClick={() => removeExit(e.id)} 
+                          style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+
+      <footer style={{ 
+        marginTop: '80px', 
+        padding: '32px 0', 
+        borderTop: '1px solid var(--border)',
+        display: 'flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: '12px'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', color: 'var(--primary)' }}>
+          <Package size={18} />
+          <div style={{ height: '14px', width: '1px', background: 'var(--border)' }}></div>
+          <span style={{ fontSize: '0.8rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '2px' }}>
+            Klarke Solutions
+          </span>
+        </div>
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', fontWeight: '500', textTransform: 'uppercase', letterSpacing: '1px' }}>
+          Matheus Silva
+        </p>
+      </footer>
+    </div>
+  );
+};
+
+export default StockExit;

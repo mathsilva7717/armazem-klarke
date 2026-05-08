@@ -31,6 +31,14 @@ function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
+    // Migração: Adiciona a coluna se ela não existir (para bancos antigos)
+    try {
+        db.exec("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 1");
+        console.log("Coluna must_change_password adicionada com sucesso.");
+    } catch (e) {
+        // Coluna já existe, ignora o erro
+    }
+
     // Stock Exits table
     db.exec(`CREATE TABLE IF NOT EXISTS stock_exits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,

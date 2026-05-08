@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const sqlite3 = require('sqlite3').verbose();
+const Database = require('better-sqlite3');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -15,19 +15,14 @@ app.use(express.json());
 
 // Database setup
 const dbPath = path.join(__dirname, 'armazem.sqlite');
-const db = new sqlite3.Database(dbPath, (err) => {
-  if (err) {
-    console.error('Erro ao conectar ao banco do Armazém:', err.message);
-  } else {
-    console.log('Conectado ao banco de dados SQLite do Armazém.');
-    initDb();
-  }
-});
+const db = new Database(dbPath);
+console.log('Conectado ao banco de dados SQLite do Armazém via better-sqlite3.');
+
+initDb();
 
 function initDb() {
-  db.serialize(() => {
     // Users table
-    db.run(`CREATE TABLE IF NOT EXISTS users (
+    db.exec(`CREATE TABLE IF NOT EXISTS users (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       username TEXT UNIQUE,
       password TEXT,
@@ -36,7 +31,7 @@ function initDb() {
     )`);
 
     // Stock Exits table
-    db.run(`CREATE TABLE IF NOT EXISTS stock_exits (
+    db.exec(`CREATE TABLE IF NOT EXISTS stock_exits (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       sku TEXT,
       quantity INTEGER,
@@ -48,7 +43,7 @@ function initDb() {
     )`);
 
     // Products table (Learning System)
-    db.run(`CREATE TABLE IF NOT EXISTS products (
+    db.exec(`CREATE TABLE IF NOT EXISTS products (
       sku TEXT PRIMARY KEY,
       name TEXT,
       weight REAL,
@@ -61,15 +56,12 @@ function initDb() {
     )`);
 
     // Create default user if not exists
-    db.get("SELECT * FROM users WHERE username = 'admin'", async (err, row) => {
-      if (!row) {
-        const hashedPassword = await bcrypt.hash('senha123', 10);
-        db.run("INSERT INTO users (username, password, name) VALUES (?, ?, ?)", 
-          ['admin', hashedPassword, 'Administrador do Armazém']);
+    const row = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
+    if (!row) {
+        const hashedPassword = bcrypt.hashSync('senha123', 10);
+        db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém');
         console.log('Usuário admin padrão criado: admin / senha123');
-      }
-    });
-  });
+    }
 }
 
 // Middleware de Autenticação
@@ -91,29 +83,33 @@ const authenticateToken = (req, res, next) => {
 // Login
 app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
-  db.get("SELECT * FROM users WHERE username = ?", [username], async (err, user) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
     if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
 
-    const validPassword = await bcrypt.compare(password, user.password);
+    const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Senha incorreta' });
 
     const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
     res.json({ token, user: { id: user.id, username: user.username, name: user.name } });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Get Stock Exits
 app.get('/api/exits', authenticateToken, (req, res) => {
-  db.all(`
-    SELECT e.*, u.name as operator_name 
-    FROM stock_exits e 
-    JOIN users u ON e.operator_id = u.id 
-    ORDER BY e.created_at DESC
-  `, [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const rows = db.prepare(`
+        SELECT e.*, u.name as operator_name 
+        FROM stock_exits e 
+        JOIN users u ON e.operator_id = u.id 
+        ORDER BY e.created_at DESC
+      `).all();
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Register Stock Exit
@@ -121,36 +117,37 @@ app.post('/api/exits', authenticateToken, (req, res) => {
   const { sku, quantity, store, date } = req.body;
   const operator_id = req.user.id;
 
-  db.run(
-    "INSERT INTO stock_exits (sku, quantity, store, exit_date, operator_id) VALUES (?, ?, ?, ?, ?)",
-    [sku, quantity, store, date, operator_id],
-    function(err) {
-      if (err) return res.status(500).json({ error: err.message });
-      res.status(201).json({ id: this.lastID, sku, quantity, store, date });
-    }
-  );
+  try {
+    const info = db.prepare(
+        "INSERT INTO stock_exits (sku, quantity, store, exit_date, operator_id) VALUES (?, ?, ?, ?, ?)"
+      ).run(sku, quantity, store, date, operator_id);
+    res.status(201).json({ id: info.lastInsertRowid, sku, quantity, store, date });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Create User (Only for management, for now simplified)
 app.post('/api/users', async (req, res) => {
   const { username, password, name } = req.body;
-  const hashedPassword = await bcrypt.hash(password, 10);
+  const hashedPassword = bcrypt.hashSync(password, 10);
   
-  db.run("INSERT INTO users (username, password, name) VALUES (?, ?, ?)", 
-    [username, hashedPassword, name], 
-    function(err) {
-      if (err) return res.status(500).json({ error: 'Usuário já existe' });
-      res.status(201).json({ id: this.lastID, username, name });
-    }
-  );
+  try {
+    const info = db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)").run(username, hashedPassword, name);
+    res.status(201).json({ id: info.lastInsertRowid, username, name });
+  } catch (err) {
+    res.status(500).json({ error: 'Usuário já existe' });
+  }
 });
 
 // Get all users
 app.get('/api/users', authenticateToken, (req, res) => {
-  db.all("SELECT id, username, name, created_at FROM users", [], (err, rows) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const rows = db.prepare("SELECT id, username, name, created_at FROM users").all();
     res.json(rows);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // PRODUCTS DATABASE (LEARNING SYSTEM)
@@ -160,30 +157,34 @@ app.post('/api/products', authenticateToken, (req, res) => {
   const { sku, name, weight, dimensions, ncm, cest } = req.body;
   const { width, height, length } = dimensions || { width: 0, height: 0, length: 0 };
 
-  db.run(`
-    INSERT INTO products (sku, name, weight, width, height, length, ncm, cest)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-    ON CONFLICT(sku) DO UPDATE SET
-      name=excluded.name,
-      weight=excluded.weight,
-      width=excluded.width,
-      height=excluded.height,
-      length=excluded.length,
-      ncm=excluded.ncm,
-      cest=excluded.cest
-  `, [sku, name, weight, width, height, length, ncm, cest], function(err) {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    db.prepare(`
+        INSERT INTO products (sku, name, weight, width, height, length, ncm, cest)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ON CONFLICT(sku) DO UPDATE SET
+          name=excluded.name,
+          weight=excluded.weight,
+          width=excluded.width,
+          height=excluded.height,
+          length=excluded.length,
+          ncm=excluded.ncm,
+          cest=excluded.cest
+      `).run(sku, name, weight, width, height, length, ncm, cest);
     res.status(200).json({ message: 'Produto salvo com sucesso!' });
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 // Search Product in DB
 app.get('/api/products/:query', authenticateToken, (req, res) => {
   const query = req.params.query;
-  db.get("SELECT * FROM products WHERE sku = ? OR name LIKE ?", [query, `%${query}%`], (err, row) => {
-    if (err) return res.status(500).json({ error: err.message });
+  try {
+    const row = db.prepare("SELECT * FROM products WHERE sku = ? OR name LIKE ?").get(query, `%${query}%`);
     res.json(row || null);
-  });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
 });
 
 app.listen(PORT, () => {

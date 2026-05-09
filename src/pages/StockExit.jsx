@@ -98,18 +98,26 @@ const StockExit = () => {
       return;
     }
 
-    const headers = ['ID', 'SKU', 'Quantidade', 'Valor Unit.', 'Valor Total', 'Loja', 'Data', 'Operador'];
+    // Ordenar por loja e depois por data para facilitar a leitura
+    const sortedExits = [...filteredExits].sort((a, b) => {
+      if (a.store !== b.store) {
+        return a.store.localeCompare(b.store);
+      }
+      return new Date(b.exit_date) - new Date(a.exit_date);
+    });
+
+    const headers = ['ID', 'Loja', 'SKU', 'Quantidade', 'Valor Unit.', 'Valor Total', 'Data', 'Operador'];
     // BOM para o Excel reconhecer acentos e caracteres especiais (UTF-8)
     const BOM = '\uFEFF';
     const csvContent = BOM + [
       headers.join(';'),
-      ...filteredExits.map(e => [
+      ...sortedExits.map(e => [
         e.id, 
+        `"${e.store}"`,
         e.sku, 
         e.quantity, 
-        (e.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-        ((e.quantity || 0) * (e.unit_price || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-        `"${e.store}"`, 
+        (e.unit_price || 0).toFixed(2).replace('.', ','),
+        ((e.quantity || 0) * (e.unit_price || 0)).toFixed(2).replace('.', ','),
         e.exit_date, 
         `"${e.operator_name || 'Admin'}"`
       ].join(';'))
@@ -119,13 +127,13 @@ const StockExit = () => {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.download = `relatorio_saidas_${filterDates.start}_ate_${filterDates.end}.csv`;
+    link.download = `relatorio_saidas_por_loja_${filterDates.start}_ate_${filterDates.end}.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
     
-    toast.success('Planilha baixada!');
+    toast.success('Planilha organizada por loja baixada!');
   };
 
   return (

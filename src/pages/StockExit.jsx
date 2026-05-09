@@ -12,6 +12,10 @@ const StockExit = () => {
     end: new Date().toISOString().split('T')[0]
   });
   const [formData, setFormData] = useState({
+    sku: '',
+    quantity: '',
+    unit_price: '',
+    store: '',
     date: new Date().toISOString().split('T')[0]
   });
   const [showHistory, setShowHistory] = useState(false);
@@ -174,6 +178,7 @@ const StockExit = () => {
         </div>
       </header>
 
+      <main style={{ 
         maxWidth: '1200px', 
         margin: '0 auto', 
         display: 'grid', 
@@ -182,7 +187,7 @@ const StockExit = () => {
         justifyItems: 'center'
       }}>
         {/* Form Column */}
-        <section className="glass-card animate-fade-in" style={{ padding: '32px', height: 'fit-content' }}>
+        <section className="glass-card animate-fade-in" style={{ padding: '32px', height: 'fit-content', width: '100%', maxWidth: '500px' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Plus size={20} color="var(--primary)" /> Nova Saída
@@ -281,7 +286,9 @@ const StockExit = () => {
               </button>
             </div>
           </form>
-        </        {/* Table Column */}
+        </section>
+
+        {/* Table Column */}
         {showHistory && (
           <section className="glass-card animate-fade-in" style={{ padding: '32px', animationDelay: '0.1s', width: '100%' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
@@ -378,7 +385,6 @@ const StockExit = () => {
             </div>
           </section>
         )}
-    </section>
       </main>
 
       <footer style={{ 

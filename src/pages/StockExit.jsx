@@ -12,12 +12,9 @@ const StockExit = () => {
     end: new Date().toISOString().split('T')[0]
   });
   const [formData, setFormData] = useState({
-    sku: '',
-    quantity: '',
-    unit_price: '',
-    store: '',
     date: new Date().toISOString().split('T')[0]
   });
+  const [showHistory, setShowHistory] = useState(false);
 
   const stores = [
     'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',
@@ -177,12 +174,12 @@ const StockExit = () => {
         </div>
       </header>
 
-      <main style={{ 
         maxWidth: '1200px', 
         margin: '0 auto', 
         display: 'grid', 
-        gridTemplateColumns: 'repeat(auto-fit, minmax(320px, 1fr))', 
-        gap: '24px' 
+        gridTemplateColumns: showHistory ? 'repeat(auto-fit, minmax(320px, 1fr))' : '1fr', 
+        gap: '24px',
+        justifyItems: 'center'
       }}>
         {/* Form Column */}
         <section className="glass-card animate-fade-in" style={{ padding: '32px', height: 'fit-content' }}>
@@ -190,6 +187,23 @@ const StockExit = () => {
             <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
               <Plus size={20} color="var(--primary)" /> Nova Saída
             </h3>
+            <button 
+              onClick={() => setShowHistory(!showHistory)}
+              style={{ 
+                background: 'transparent', 
+                border: '1px solid var(--border)', 
+                color: 'var(--text-muted)', 
+                padding: '6px 12px', 
+                fontSize: '0.7rem', 
+                fontWeight: '800',
+                cursor: 'pointer',
+                display: 'flex',
+                alignItems: 'center',
+                gap: '8px'
+              }}
+            >
+              <Package size={14} /> {showHistory ? 'Ocultar Histórico' : 'Ver Histórico'}
+            </button>
           </div>
           
           <form onSubmit={handleSubmit}>
@@ -267,103 +281,104 @@ const StockExit = () => {
               </button>
             </div>
           </form>
-        </section>
-
-        {/* Table Column */}
-        <section className="glass-card animate-fade-in" style={{ padding: '32px', animationDelay: '0.1s' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
-            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <Package size={20} color="var(--primary)" /> Histórico de Saídas
-            </h3>
-            <button onClick={exportToCSV} className="btn-primary" style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '8px 16px', fontSize: '0.8rem' }}>
-              <Download size={16} /> Exportar Planilha
-            </button>
-          </div>
-
-          {/* FILTRO DE DATAS */}
-          <div style={{ 
-            display: 'flex', 
-            gap: '12px', 
-            marginBottom: '24px', 
-            padding: '16px', 
-            background: 'rgba(255,255,255,0.03)', 
-            border: '1px solid var(--border)',
-            borderRadius: '4px',
-            alignItems: 'flex-end',
-            flexWrap: 'wrap'
-          }}>
-            <div style={{ flex: 1, minWidth: '140px' }}>
-              <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>DE:</label>
-              <input 
-                type="date" 
-                value={filterDates.start}
-                onChange={(e) => setFilterDates({...filterDates, start: e.target.value})}
-                style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
-              />
+        </        {/* Table Column */}
+        {showHistory && (
+          <section className="glass-card animate-fade-in" style={{ padding: '32px', animationDelay: '0.1s', width: '100%' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+              <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <Package size={20} color="var(--primary)" /> Histórico de Saídas
+              </h3>
+              <button onClick={exportToCSV} className="btn-primary" style={{ background: 'transparent', color: 'var(--primary)', border: '1px solid var(--primary)', padding: '8px 16px', fontSize: '0.8rem' }}>
+                <Download size={16} /> Exportar Planilha
+              </button>
             </div>
-            <div style={{ flex: 1, minWidth: '140px' }}>
-              <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>ATÉ:</label>
-              <input 
-                type="date" 
-                value={filterDates.end}
-                onChange={(e) => setFilterDates({...filterDates, end: e.target.value})}
-                style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
-              />
-            </div>
-            <button 
-              onClick={fetchExits}
-              style={{ background: 'var(--border)', color: '#fff', border: 'none', padding: '9px 12px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '700' }}
-            >
-              ATUALIZAR
-            </button>
-          </div>
 
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
-              <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>SKU</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Qtd</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Valor Total</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Operador</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data</th>
-                  <th style={{ padding: '12px' }}></th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredExits.length === 0 ? (
-                  <tr>
-                    <td colSpan="6" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
-                      Nenhuma saída encontrada para este período.
-                    </td>
+            {/* FILTRO DE DATAS */}
+            <div style={{ 
+              display: 'flex', 
+              gap: '12px', 
+              marginBottom: '24px', 
+              padding: '16px', 
+              background: 'rgba(255,255,255,0.03)', 
+              border: '1px solid var(--border)',
+              borderRadius: '4px',
+              alignItems: 'flex-end',
+              flexWrap: 'wrap'
+            }}>
+              <div style={{ flex: 1, minWidth: '140px' }}>
+                <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>DE:</label>
+                <input 
+                  type="date" 
+                  value={filterDates.start}
+                  onChange={(e) => setFilterDates({...filterDates, start: e.target.value})}
+                  style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
+                />
+              </div>
+              <div style={{ flex: 1, minWidth: '140px' }}>
+                <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>ATÉ:</label>
+                <input 
+                  type="date" 
+                  value={filterDates.end}
+                  onChange={(e) => setFilterDates({...filterDates, end: e.target.value})}
+                  style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
+                />
+              </div>
+              <button 
+                onClick={fetchExits}
+                style={{ background: 'var(--border)', color: '#fff', border: 'none', padding: '9px 12px', cursor: 'pointer', fontSize: '0.7rem', fontWeight: '700' }}
+              >
+                ATUALIZAR
+              </button>
+            </div>
+
+            <div style={{ overflowX: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
+                    <th style={{ padding: '12px', color: 'var(--text-muted)' }}>SKU</th>
+                    <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Qtd</th>
+                    <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Valor Total</th>
+                    <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja</th>
+                    <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Operador</th>
+                    <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data</th>
+                    <th style={{ padding: '12px' }}></th>
                   </tr>
-                ) : (
-                  filteredExits.map(e => (
-                    <tr key={e.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
-                      <td data-label="SKU" style={{ padding: '12px', fontWeight: '600' }}>{e.sku}</td>
-                      <td data-label="Qtd" style={{ padding: '12px' }}>{e.quantity}</td>
-                      <td data-label="Valor" style={{ padding: '12px', fontWeight: '700', color: 'var(--primary)' }}>
-                        {((e.quantity || 0) * (e.unit_price || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                      </td>
-                      <td data-label="Loja" style={{ padding: '12px' }}>{e.store}</td>
-                      <td data-label="Operador" style={{ padding: '12px', color: 'var(--primary)' }}>{e.operator_name || 'Admin'}</td>
-                      <td data-label="Data" style={{ padding: '12px', color: 'var(--text-muted)' }}>{e.exit_date}</td>
-                      <td style={{ padding: '12px', textAlign: 'right' }}>
-                        <button 
-                          onClick={() => removeExit(e.id)} 
-                          style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                </thead>
+                <tbody>
+                  {filteredExits.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
+                        Nenhuma saída encontrada para este período.
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
-          </div>
-        </section>
+                  ) : (
+                    filteredExits.map(e => (
+                      <tr key={e.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
+                        <td data-label="SKU" style={{ padding: '12px', fontWeight: '600' }}>{e.sku}</td>
+                        <td data-label="Qtd" style={{ padding: '12px' }}>{e.quantity}</td>
+                        <td data-label="Valor" style={{ padding: '12px', fontWeight: '700', color: 'var(--primary)' }}>
+                          {((e.quantity || 0) * (e.unit_price || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                        </td>
+                        <td data-label="Loja" style={{ padding: '12px' }}>{e.store}</td>
+                        <td data-label="Operador" style={{ padding: '12px', color: 'var(--primary)' }}>{e.operator_name || 'Admin'}</td>
+                        <td data-label="Data" style={{ padding: '12px', color: 'var(--text-muted)' }}>{e.exit_date}</td>
+                        <td style={{ padding: '12px', textAlign: 'right' }}>
+                          <button 
+                            onClick={() => removeExit(e.id)} 
+                            style={{ background: 'transparent', border: 'none', color: 'var(--error)', cursor: 'pointer' }}
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        )}
+    </section>
       </main>
 
       <footer style={{ 

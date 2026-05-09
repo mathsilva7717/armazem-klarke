@@ -11,6 +11,7 @@ const StockExit = () => {
     start: new Date().toISOString().split('T')[0],
     end: new Date().toISOString().split('T')[0]
   });
+  const [filterStore, setFilterStore] = useState('');
   const [formData, setFormData] = useState({
     sku: '',
     quantity: '',
@@ -42,7 +43,9 @@ const StockExit = () => {
 
   const filteredExits = exits.filter(e => {
     const exitDate = e.exit_date;
-    return exitDate >= filterDates.start && exitDate <= filterDates.end;
+    const matchDate = exitDate >= filterDates.start && exitDate <= filterDates.end;
+    const matchStore = filterStore === '' || e.store === filterStore;
+    return matchDate && matchStore;
   });
 
   const handleLogout = () => {
@@ -308,7 +311,7 @@ const StockExit = () => {
               </button>
             </div>
 
-            {/* FILTRO DE DATAS */}
+            {/* FILTRO DE DATAS E LOJA */}
             <div style={{ 
               display: 'flex', 
               gap: '12px', 
@@ -337,6 +340,17 @@ const StockExit = () => {
                   onChange={(e) => setFilterDates({...filterDates, end: e.target.value})}
                   style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
                 />
+              </div>
+              <div style={{ flex: 1, minWidth: '180px' }}>
+                <label style={{ fontSize: '0.65rem', color: 'var(--text-muted)', display: 'block', marginBottom: '6px', fontWeight: '800' }}>FILTRAR POR LOJA:</label>
+                <select 
+                  value={filterStore}
+                  onChange={(e) => setFilterStore(e.target.value)}
+                  style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
+                >
+                  <option value="">TODAS AS LOJAS</option>
+                  {stores.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
               </div>
               <button 
                 onClick={fetchExits}

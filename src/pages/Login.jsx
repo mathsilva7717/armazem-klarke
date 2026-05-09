@@ -16,19 +16,10 @@ const Login = () => {
 
     try {
       const response = await api.post('/login', { username, password });
-      localStorage.setItem('armazem_token', response.data.token);
       localStorage.setItem('armazem_user', JSON.stringify(response.data.user));
       localStorage.setItem('armazem_auth', 'true');
-      
-      console.log('Dados do usuário recebidos:', response.data.user);
-      
       toast.success(`Bem-vindo, ${response.data.user.name}!`);
-      
-      if (response.data.user.mustChangePassword) {
-        navigate('/reset-password');
-      } else {
-        navigate('/');
-      }
+      navigate('/');
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao conectar ao servidor.');
     } finally {
@@ -58,8 +49,8 @@ const Login = () => {
           }}>
             <Box size={32} color="black" />
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '2px' }}>ARMAZEM CONTROLE</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', textTransform: 'uppercase' }}>Sistema de Gestão de Saídas</p>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: '700', letterSpacing: '-0.5px' }}>Armazém Controle</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>Sistema de Gestão de Saídas</p>
         </div>
 
         <form onSubmit={handleLogin}>
@@ -86,7 +77,7 @@ const Login = () => {
           </div>
 
           <button type="submit" className="btn-primary" style={{ width: '100%', marginTop: '8px' }} disabled={loading}>
-            {loading ? 'Entrando...' : <><LogIn size={18} /> Entrar no Sistema</>}
+            {loading ? 'Entrando...' : <><LogIn size={18} /> Entrar</>}
           </button>
         </form>
 

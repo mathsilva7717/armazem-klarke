@@ -14,6 +14,7 @@ const StockExit = () => {
   const [formData, setFormData] = useState({
     sku: '',
     quantity: '',
+    unit_price: '',
     store: '',
     date: new Date().toISOString().split('T')[0]
   });
@@ -68,6 +69,7 @@ const StockExit = () => {
       setFormData({
         sku: '',
         quantity: '',
+        unit_price: '',
         store: formData.store,
         date: formData.date
       });
@@ -95,12 +97,21 @@ const StockExit = () => {
       return;
     }
 
-    const headers = ['ID', 'SKU', 'Quantidade', 'Loja', 'Data', 'Operador'];
+    const headers = ['ID', 'SKU', 'Quantidade', 'Valor Unit.', 'Valor Total', 'Loja', 'Data', 'Operador'];
     // BOM para o Excel reconhecer acentos e caracteres especiais (UTF-8)
     const BOM = '\uFEFF';
     const csvContent = BOM + [
       headers.join(';'),
-      ...filteredExits.map(e => [e.id, e.sku, e.quantity, `"${e.store}"`, e.exit_date, `"${e.operator_name || 'Admin'}"`].join(';'))
+      ...filteredExits.map(e => [
+        e.id, 
+        e.sku, 
+        e.quantity, 
+        (e.unit_price || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        ((e.quantity || 0) * (e.unit_price || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+        `"${e.store}"`, 
+        e.exit_date, 
+        `"${e.operator_name || 'Admin'}"`
+      ].join(';'))
     ].join('\n');
 
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -210,6 +221,20 @@ const StockExit = () => {
             </div>
 
             <div className="input-group">
+              <label><Plus size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Valor Unitário (R$)</label>
+              <input 
+                name="unit_price"
+                type="number" 
+                step="0.01"
+                inputMode="decimal"
+                placeholder="0,00" 
+                value={formData.unit_price}
+                onChange={handleInputChange}
+                required
+              />
+            </div>
+
+            <div className="input-group">
               <label><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Loja de Destino</label>
               <select name="store" value={formData.store} onChange={handleInputChange} required>
                 <option value="">Selecione a loja</option>
@@ -234,7 +259,7 @@ const StockExit = () => {
               </button>
               <button 
                 type="button" 
-                onClick={() => setFormData({ sku: '', quantity: '', store: '', date: new Date().toISOString().split('T')[0] })}
+                onClick={() => setFormData({ sku: '', quantity: '', unit_price: '', store: '', date: new Date().toISOString().split('T')[0] })}
                 className="btn-primary" 
                 style={{ flex: 1, background: 'transparent', color: 'var(--text-muted)', border: '1px solid var(--border)' }}
               >
@@ -299,6 +324,7 @@ const StockExit = () => {
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>SKU</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Qtd</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Valor Total</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Operador</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data</th>
@@ -317,6 +343,9 @@ const StockExit = () => {
                     <tr key={e.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
                       <td data-label="SKU" style={{ padding: '12px', fontWeight: '600' }}>{e.sku}</td>
                       <td data-label="Qtd" style={{ padding: '12px' }}>{e.quantity}</td>
+                      <td data-label="Valor" style={{ padding: '12px', fontWeight: '700', color: 'var(--primary)' }}>
+                        {((e.quantity || 0) * (e.unit_price || 0)).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                      </td>
                       <td data-label="Loja" style={{ padding: '12px' }}>{e.store}</td>
                       <td data-label="Operador" style={{ padding: '12px', color: 'var(--primary)' }}>{e.operator_name || 'Admin'}</td>
                       <td data-label="Data" style={{ padding: '12px', color: 'var(--text-muted)' }}>{e.exit_date}</td>

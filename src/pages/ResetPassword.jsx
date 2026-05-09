@@ -62,8 +62,8 @@ const ResetPassword = () => {
           }}>
             <Lock size={32} color="black" />
           </div>
-          <h1 style={{ fontSize: '1.4rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '2px' }}>Segurança da Conta</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.8rem', marginTop: '4px', textTransform: 'uppercase' }}>Defina uma senha pessoal para continuar</p>
+          <h1 style={{ fontSize: '1.4rem', fontWeight: '700', letterSpacing: '-0.5px' }}>Segurança da Conta</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>Defina uma senha pessoal para continuar</p>
         </div>
 
         <form onSubmit={handleReset}>
@@ -90,7 +90,7 @@ const ResetPassword = () => {
           </div>
 
           <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
-            {loading ? 'SALVANDO...' : 'ATUALIZAR E ENTRAR'}
+            {loading ? 'Salvando...' : 'Atualizar e Entrar'}
           </button>
         </form>
       </div>

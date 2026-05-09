@@ -189,19 +189,7 @@ const Users = () => {
                 {users.map(u => (
                   <tr key={u.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
                     <td data-label="Nome" style={{ padding: '12px', fontWeight: '600' }}>{u.name}</td>
-                    <td data-label="Usuário" style={{ padding: '12px' }}>
-                      {u.username}
-                      {u.must_change_password === 1 && (
-                        <span style={{ 
-                          marginLeft: '8px', 
-                          fontSize: '0.6rem', 
-                          background: 'rgba(234, 179, 8, 0.2)', 
-                          color: '#eab308', 
-                          padding: '2px 6px',
-                          border: '1px solid #eab308'
-                        }}>SENHA PROVISÓRIA</span>
-                      )}
-                    </td>
+                    <td data-label="Usuário" style={{ padding: '12px' }}>{u.username}</td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
                       {u.username !== 'admin' && (
                         <button 

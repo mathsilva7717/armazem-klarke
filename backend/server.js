@@ -33,11 +33,8 @@ function initDb() {
 
     // Migração: Adiciona a coluna se ela não existir (para bancos antigos)
     try {
-        db.exec("ALTER TABLE users ADD COLUMN must_change_password INTEGER DEFAULT 1");
-        console.log("Coluna must_change_password adicionada com sucesso.");
-    } catch (e) {
-        // Coluna já existe, ignora o erro
-    }
+        // Apenas para não dar erro se já existir, mas não vamos usar a lógica
+    } catch (e) { }
 
     // Stock Exits table
     db.exec(`CREATE TABLE IF NOT EXISTS stock_exits (
@@ -47,9 +44,18 @@ function initDb() {
       store TEXT,
       exit_date DATE,
       operator_id INTEGER,
+      unit_price REAL DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       FOREIGN KEY(operator_id) REFERENCES users(id)
     )`);
+
+    // Migração: Adiciona unit_price se não existir
+    try {
+        db.prepare("ALTER TABLE stock_exits ADD COLUMN unit_price REAL DEFAULT 0").run();
+        console.log('Coluna unit_price adicionada à tabela stock_exits.');
+    } catch (e) {
+        // Coluna já existe
+    }
 
     // Products table (Learning System)
     db.exec(`CREATE TABLE IF NOT EXISTS products (
@@ -108,8 +114,7 @@ app.post('/api/login', (req, res) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        name: user.name,
-        mustChangePassword: mustChange 
+        name: user.name
       } 
     });
   } catch (err) {
@@ -134,14 +139,14 @@ app.get('/api/exits', authenticateToken, (req, res) => {
 
 // Register Stock Exit
 app.post('/api/exits', authenticateToken, (req, res) => {
-  const { sku, quantity, store, date } = req.body;
+  const { sku, quantity, store, date, unit_price } = req.body;
   const operator_id = req.user.id;
 
   try {
     const info = db.prepare(
-        "INSERT INTO stock_exits (sku, quantity, store, exit_date, operator_id) VALUES (?, ?, ?, ?, ?)"
-      ).run(sku, quantity, store, date, operator_id);
-    res.status(201).json({ id: info.lastInsertRowid, sku, quantity, store, date });
+        "INSERT INTO stock_exits (sku, quantity, store, exit_date, operator_id, unit_price) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run(sku, quantity, store, date, operator_id, unit_price || 0);
+    res.status(201).json({ id: info.lastInsertRowid, sku, quantity, store, date, unit_price: unit_price || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -153,31 +158,19 @@ app.post('/api/users', async (req, res) => {
   const hashedPassword = bcrypt.hashSync(password, 10);
   
   try {
-    const info = db.prepare("INSERT INTO users (username, password, name, must_change_password) VALUES (?, ?, ?, ?)").run(username, hashedPassword, name, 1);
+    const info = db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)").run(username, hashedPassword, name);
     res.status(201).json({ id: info.lastInsertRowid, username, name });
   } catch (err) {
     res.status(500).json({ error: 'Usuário já existe' });
   }
 });
 
-// Change Password
-app.post('/api/change-password', authenticateToken, (req, res) => {
-  const { newPassword } = req.body;
-  const userId = req.user.id;
-  const hashedPassword = bcrypt.hashSync(newPassword, 10);
 
-  try {
-    db.prepare("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?").run(hashedPassword, userId);
-    res.json({ message: 'Senha alterada com sucesso!' });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-});
 
 // Get all users
 app.get('/api/users', authenticateToken, (req, res) => {
   try {
-    const rows = db.prepare("SELECT id, username, name, must_change_password, created_at FROM users").all();
+    const rows = db.prepare("SELECT id, username, name, created_at FROM users").all();
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });

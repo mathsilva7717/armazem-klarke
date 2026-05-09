@@ -20,6 +20,8 @@ const StockExit = () => {
     date: new Date().toISOString().split('T')[0]
   });
   const [showHistory, setShowHistory] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
 
   const stores = [
     'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',
@@ -47,6 +49,13 @@ const StockExit = () => {
     const matchStore = filterStore === '' || e.store === filterStore;
     return matchDate && matchStore;
   });
+
+  // Paginação
+  const totalPages = Math.ceil(filteredExits.length / itemsPerPage);
+  const paginatedExits = filteredExits.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
 
   const handleLogout = () => {
     localStorage.removeItem('armazem_auth');
@@ -374,14 +383,14 @@ const StockExit = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {filteredExits.length === 0 ? (
+                  {paginatedExits.length === 0 ? (
                     <tr>
                       <td colSpan="7" style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)' }}>
                         Nenhuma saída encontrada para este período.
                       </td>
                     </tr>
                   ) : (
-                    filteredExits.map(e => (
+                    paginatedExits.map(e => (
                       <tr key={e.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
                         <td data-label="SKU" style={{ padding: '12px', fontWeight: '600' }}>{e.sku}</td>
                         <td data-label="Qtd" style={{ padding: '12px' }}>{e.quantity}</td>
@@ -405,6 +414,57 @@ const StockExit = () => {
                 </tbody>
               </table>
             </div>
+
+            {/* CONTROLES DE PAGINAÇÃO */}
+            {filteredExits.length > itemsPerPage && (
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                alignItems: 'center', 
+                marginTop: '24px',
+                paddingTop: '16px',
+                borderTop: '1px solid var(--border)'
+              }}>
+                <p style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+                  MOSTRANDO {paginatedExits.length} DE {filteredExits.length} REGISTROS
+                </p>
+                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                  <button 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(prev => prev - 1)}
+                    style={{ 
+                      background: 'transparent', 
+                      border: '1px solid var(--border)', 
+                      color: currentPage === 1 ? '#333' : '#fff',
+                      padding: '6px 12px',
+                      cursor: currentPage === 1 ? 'default' : 'pointer',
+                      fontSize: '0.7rem',
+                      fontWeight: '800'
+                    }}
+                  >
+                    ANTERIOR
+                  </button>
+                  <span style={{ fontSize: '0.75rem', fontWeight: '800', padding: '0 8px' }}>
+                    {currentPage} / {totalPages}
+                  </span>
+                  <button 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(prev => prev + 1)}
+                    style={{ 
+                      background: 'transparent', 
+                      border: '1px solid var(--border)', 
+                      color: currentPage === totalPages ? '#333' : '#fff',
+                      padding: '6px 12px',
+                      cursor: currentPage === totalPages ? 'default' : 'pointer',
+                      fontSize: '0.7rem',
+                      fontWeight: '800'
+                    }}
+                  >
+                    PRÓXIMO
+                  </button>
+                </div>
+              </div>
+            )}
           </section>
         )}
       </main>

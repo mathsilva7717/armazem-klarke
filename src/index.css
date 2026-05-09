@@ -26,6 +26,7 @@ body {
   color: var(--text-main);
   overflow-x: hidden;
   min-height: 100vh;
+  color-scheme: dark; /* Garante que seletores nativos como calendário fiquem visíveis no modo escuro */
 }
 
 .glass-card {
@@ -83,6 +84,12 @@ body {
 
 .input-group input:focus, .input-group select:focus {
   border-color: var(--primary);
+}
+
+/* Garante que o ícone do calendário apareça em campos de data */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+  cursor: pointer;
 }
 
 /* RESPONSIVENESS */

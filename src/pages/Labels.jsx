@@ -51,6 +51,20 @@ const Labels = () => {
     localStorage.setItem('armazem_label_history', JSON.stringify(updatedHistory));
   };
 
+  const deleteFromHistory = (e, codeToDelete) => {
+    e.stopPropagation();
+    const updatedHistory = history.filter(h => h.code !== codeToDelete);
+    setHistory(updatedHistory);
+    localStorage.setItem('armazem_label_history', JSON.stringify(updatedHistory));
+    toast.success('Etiqueta removida do histórico!');
+  };
+
+  const clearHistory = () => {
+    setHistory([]);
+    localStorage.removeItem('armazem_label_history');
+    toast.success('Histórico de etiquetas limpo!');
+  };
+
   const handlePrint = () => {
     if (!code) {
       toast.error('Informe um código para gerar.');
@@ -209,35 +223,82 @@ const Labels = () => {
 
           {history.length > 0 && (
             <div style={{ marginTop: '32px' }}>
-              <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', marginBottom: '12px', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <History size={14} /> Recentes
-              </p>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+                <p style={{ fontSize: '0.7rem', color: 'var(--text-muted)', fontWeight: '800', textTransform: 'uppercase', display: 'flex', alignItems: 'center', gap: '6px', margin: 0 }}>
+                  <History size={14} /> Recentes
+                </p>
+                <button 
+                  type="button" 
+                  onClick={clearHistory}
+                  style={{ 
+                    background: 'transparent', 
+                    border: 'none', 
+                    color: 'var(--error)', 
+                    fontSize: '0.65rem', 
+                    fontWeight: '800', 
+                    cursor: 'pointer', 
+                    display: 'flex', 
+                    alignItems: 'center', 
+                    gap: '4px',
+                    textTransform: 'uppercase'
+                  }}
+                >
+                  <Trash2 size={12} /> Limpar Tudo
+                </button>
+              </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                 {history.map(h => (
-                  <button 
+                  <div 
                     key={h.code}
-                    type="button"
-                    onClick={() => { setCode(h.code); setName(h.name); }}
                     style={{ 
                       background: 'rgba(255,255,255,0.03)', 
-                      color: 'var(--text-main)', 
                       border: '1px solid var(--border)', 
-                      padding: '10px', 
-                      fontSize: '0.8rem', 
-                      cursor: 'pointer',
-                      textAlign: 'left',
                       borderRadius: '4px',
                       display: 'flex',
                       justifyContent: 'space-between',
-                      alignItems: 'center'
+                      alignItems: 'center',
+                      transition: 'all 0.2s ease',
                     }}
                   >
-                    <div>
-                      <span style={{ fontWeight: '800', color: 'var(--primary)', marginRight: '8px' }}>{h.code}</span>
-                      <span style={{ fontSize: '0.75rem' }}>{h.name || 'Sem nome'}</span>
+                    <div 
+                      onClick={() => { setCode(h.code); setName(h.name); }}
+                      style={{ 
+                        flex: 1,
+                        padding: '10px', 
+                        cursor: 'pointer',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        gap: '2px'
+                      }}
+                    >
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <span style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '0.8rem' }}>{h.code}</span>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-main)' }}>{h.name || 'Sem nome'}</span>
+                      </div>
+                      <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{new Date(h.date).toLocaleDateString()}</span>
                     </div>
-                    <span style={{ fontSize: '0.6rem', color: 'var(--text-muted)' }}>{new Date(h.date).toLocaleDateString()}</span>
-                  </button>
+                    
+                    <button
+                      type="button"
+                      onClick={(e) => deleteFromHistory(e, h.code)}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--text-muted)',
+                        padding: '10px 16px',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        transition: 'color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => e.currentTarget.style.color = 'var(--error)'}
+                      onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                      title="Excluir do histórico"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </div>
                 ))}
               </div>
             </div>

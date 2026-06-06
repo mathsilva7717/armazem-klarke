@@ -41,7 +41,7 @@ const Login = () => {
             src="/logok.png" 
             alt="Logo" 
             style={{ 
-              height: '64px', 
+              height: '100px', 
               objectFit: 'contain', 
               margin: '0 auto 16px',
               display: 'block'

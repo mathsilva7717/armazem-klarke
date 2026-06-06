@@ -1,6 +1,5 @@
 const express = require('express');
 const cors = require('cors');
-const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -15,8 +14,18 @@ app.use(express.json());
 
 // Database setup
 const dbPath = path.join(__dirname, 'armazem.sqlite');
-const db = new DatabaseSync(dbPath);
-console.log('Conectado ao banco de dados SQLite do Armazém via node:sqlite.');
+let db;
+
+try {
+  const Database = require('better-sqlite3');
+  db = new Database(dbPath);
+  console.log('Conectado ao banco de dados SQLite do Armazém via better-sqlite3.');
+} catch (e) {
+  console.log('better-sqlite3 não encontrado. Tentando carregar node:sqlite nativo...');
+  const { DatabaseSync } = require('node:sqlite');
+  db = new DatabaseSync(dbPath);
+  console.log('Conectado ao banco de dados SQLite do Armazém via node:sqlite.');
+}
 
 initDb();
 

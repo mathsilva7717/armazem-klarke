@@ -113,7 +113,7 @@ const Dashboard = () => {
             <Box color="black" size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.2rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>K-Warehouse</h1>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Klarke Depot</h1>
             <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>Sistema Integrado de Armazém</p>
           </div>
         </div>

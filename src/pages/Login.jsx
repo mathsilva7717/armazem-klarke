@@ -33,8 +33,7 @@ const Login = () => {
       height: '100vh', 
       display: 'flex', 
       alignItems: 'center', 
-      justifyContent: 'center',
-      background: 'var(--bg-dark)'
+      justifyContent: 'center'
     }}>
       <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
         <div style={{ textAlign: 'center', marginBottom: '32px' }}>
@@ -50,7 +49,7 @@ const Login = () => {
           }}>
             <Box size={32} color="black" />
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: '700', letterSpacing: '-0.5px' }}>K-Warehouse</h1>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: '700', letterSpacing: '-0.5px' }}>Klarke Depot</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>Sistema Integrado de Armazém</p>
         </div>
 

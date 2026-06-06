@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, FileText, ShoppingBag, Hash, Tag, Package, User, LogOut, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
+import api from '../api';
 
 const PurchaseOrder = () => {
   const navigate = useNavigate();
@@ -247,6 +248,14 @@ const PurchaseOrder = () => {
 
       // Abrir PDF em uma nova aba
       doc.output('dataurlnewwindow');
+
+      // Registrar no log de auditoria
+      try {
+        await api.post('/purchase-orders/log', { storeName, items });
+      } catch (logErr) {
+        console.warn("Erro ao registrar log do pedido:", logErr);
+      }
+
       toast.dismiss(loadToast);
       toast.success('Pedido de Compra gerado com sucesso!');
     } catch (err) {

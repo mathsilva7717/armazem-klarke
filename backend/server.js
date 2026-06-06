@@ -353,6 +353,30 @@ app.post('/api/users/:id/reset-password', authenticateToken, requireAdmin, (req,
   }
 });
 
+// Log purchase order creation
+app.post('/api/purchase-orders/log', authenticateToken, (req, res) => {
+  const { storeName, items } = req.body;
+  if (!storeName || !items || !Array.isArray(items)) {
+    return res.status(400).json({ error: 'Dados do pedido inválidos.' });
+  }
+
+  try {
+    const detailsObj = {
+      storeName,
+      items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity }))
+    };
+    logAction(
+      req.user.id, 
+      req.user.username, 
+      'GERAR_PEDIDO', 
+      JSON.stringify(detailsObj)
+    );
+    res.status(201).json({ message: 'Pedido registrado no log com sucesso.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PRODUCTS DATABASE (LEARNING SYSTEM)
 
 // Save/Update Product

@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, RefreshCw, Search, Calendar, User, Terminal, LogOut, FileSpreadsheet } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Search, Calendar, User, Terminal, LogOut, FileSpreadsheet, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
 import api from '../api';
 
 const Logs = () => {
@@ -112,6 +113,12 @@ const Logs = () => {
           color: '#a855f7',
           border: '1px solid #a855f7'
         };
+      case 'GERAR_PEDIDO':
+        return {
+          background: 'rgba(34, 197, 94, 0.15)',
+          color: '#22c55e',
+          border: '1px solid #22c55e'
+        };
       default:
         return {
           background: 'rgba(255, 255, 255, 0.05)',
@@ -147,6 +154,180 @@ const Logs = () => {
     link.click();
     document.body.removeChild(link);
     toast.success('Logs exportados com sucesso!');
+  };
+
+  const getBase64ImageFromUrl = async (url) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(reader.result), false);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      console.warn("Could not load image as base64:", e);
+      return null;
+    }
+  };
+
+  const handleRedownloadOrder = async (detailsJson) => {
+    let data;
+    try {
+      data = JSON.parse(detailsJson);
+    } catch (e) {
+      toast.error('Erro ao processar dados do pedido.');
+      return;
+    }
+
+    const { storeName, items } = data;
+    if (!storeName || !items || !Array.isArray(items)) {
+      toast.error('Dados do pedido incompletos.');
+      return;
+    }
+
+    const loadToast = toast.loading('Re-gerando PDF do Pedido...');
+
+    try {
+      const logoBase64 = await getBase64ImageFromUrl('/loja.png');
+      const doc = new jsPDF('p', 'mm', 'a4');
+
+      const colorAmber = [245, 158, 11]; // #f59e0b
+      const colorDark = [38, 38, 38]; // #262626
+
+      // Top Border
+      doc.setFillColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+      doc.rect(0, 0, 210, 5, 'F');
+
+      // Logo e Cabeçalho
+      let textXOffset = 20;
+      if (logoBase64) {
+        doc.addImage(logoBase64, 'PNG', 20, 15, 35, 18);
+        textXOffset = 62;
+      } else {
+        doc.setDrawColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+        doc.setLineWidth(0.8);
+        doc.rect(20, 15, 35, 18);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(8);
+        doc.setTextColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+        doc.text("KLA LOGÍSTICA", 37.5, 25, { align: 'center' });
+        textXOffset = 62;
+      }
+
+      // Nome da Loja
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(14);
+      doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+      doc.text(storeName.toUpperCase(), textXOffset, 22);
+
+      // Título do Documento
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(9);
+      doc.setTextColor(120, 120, 120);
+      doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA (CÓPIA DE LOG)", textXOffset, 27);
+
+      // Linha Divisória
+      doc.line(20, 38, 190, 38);
+
+      // Info Card
+      doc.setFillColor(250, 250, 250);
+      doc.rect(20, 42, 170, 20, 'F');
+      doc.setDrawColor(230, 230, 230);
+      doc.rect(20, 42, 170, 20);
+
+      // Info
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(80, 80, 80);
+      doc.text("Re-emissor (Cópia):", 25, 49);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      doc.text(user.name || user.username || 'Administrador', 25, 54);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(80, 80, 80);
+      doc.text("Data de Re-emissão:", 120, 49);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+      const currentDate = new Date().toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      doc.text(currentDate, 120, 54);
+
+      // Tabela de Itens
+      let currentY = 74;
+      doc.setFillColor(colorDark[0], colorDark[1], colorDark[2]);
+      doc.rect(20, currentY, 170, 8, 'F');
+
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(255, 255, 255);
+      doc.text("SKU", 25, currentY + 5.5);
+      doc.text("NOME DO PRODUTO", 65, currentY + 5.5);
+      doc.text("QUANTIDADE", 165, currentY + 5.5);
+
+      currentY += 8;
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+
+      items.forEach((item, index) => {
+        if (index % 2 === 1) {
+          doc.setFillColor(248, 248, 248);
+          doc.rect(20, currentY, 170, 9, 'F');
+        }
+        doc.setDrawColor(240, 240, 240);
+        doc.line(20, currentY + 9, 190, currentY + 9);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.sku, 25, currentY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        const itemDesc = item.name.length > 50 ? item.name.substring(0, 47) + '...' : item.name;
+        doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.quantity.toString(), 165, currentY + 6);
+
+        currentY += 9;
+      });
+
+      doc.setDrawColor(200, 200, 200);
+      doc.rect(20, 74, 170, currentY - 74);
+
+      // Assinatura
+      const signatureY = 250;
+      doc.setDrawColor(180, 180, 180);
+      doc.line(60, signatureY, 150, signatureY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
+      doc.text("ASSINATURA DE RE-EMISSÃO (CÓPIA)", 105, signatureY + 5, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.text(user.name || user.username || 'Operador', 105, signatureY + 10, { align: 'center' });
+
+      // Rodapé
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(7);
+      doc.setTextColor(150, 150, 150);
+      doc.text("Cópia de Log gerada eletronicamente via Sistema Klarke Logistics.", 105, 285, { align: 'center' });
+
+      doc.output('dataurlnewwindow');
+      toast.dismiss(loadToast);
+      toast.success('Pedido re-gerado com sucesso!');
+    } catch (err) {
+      console.error(err);
+      toast.dismiss(loadToast);
+      toast.error('Erro ao re-gerar o PDF.');
+    }
   };
 
   return (
@@ -241,6 +422,7 @@ const Logs = () => {
                   <option value="EXCLUIR_USUARIO">Exclusões de Usuários</option>
                   <option value="ALTERAR_CARGO">Alterações de Cargo</option>
                   <option value="SALVAR_PRODUTO">Cadastro de Produtos</option>
+                  <option value="GERAR_PEDIDO">Pedidos de Compra</option>
                 </select>
               </div>
             </div>
@@ -320,7 +502,44 @@ const Logs = () => {
                           {log.action}
                         </span>
                       </td>
-                      <td data-label="Detalhes" style={{ padding: '12px', color: 'var(--text-main)' }}>{log.details}</td>
+                      <td data-label="Detalhes" style={{ padding: '12px', color: 'var(--text-main)' }}>
+                        {log.action === 'GERAR_PEDIDO' ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                            <span>
+                              {(() => {
+                                try {
+                                  const data = JSON.parse(log.details);
+                                  return `Pedido gerado para: ${data.storeName} (${data.items?.length || 0} itens)`;
+                                } catch (e) {
+                                  return log.details;
+                                }
+                              })()}
+                            </span>
+                            <button
+                              onClick={() => handleRedownloadOrder(log.details)}
+                              style={{
+                                background: 'rgba(245, 158, 11, 0.15)',
+                                border: '1px solid var(--primary)',
+                                color: 'var(--primary)',
+                                padding: '4px 8px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                textTransform: 'uppercase',
+                                fontFamily: 'sans-serif'
+                              }}
+                              title="Rebaixar PDF do Pedido"
+                            >
+                              <Download size={12} /> PDF
+                            </button>
+                          </div>
+                        ) : (
+                          log.details
+                        )}
+                      </td>
                     </tr>
                   ))
                 )}

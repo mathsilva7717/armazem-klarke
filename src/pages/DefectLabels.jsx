@@ -87,7 +87,7 @@ const DefectLabels = () => {
         doc.setTextColor(0, 0, 0); 
         let watermarkText = storeName.toUpperCase();
         watermarkText = watermarkText.replace("PRAIA GRANDE", "PG").replace("SÃO VICENTE", "SV");
-        doc.text(watermarkText, 20.5, 23.5, { align: 'center' });
+        doc.text(watermarkText, 20.5, 21.5, { align: 'center' });
 
         // 2. Logo da loja
         if (logoBase64) {
@@ -132,7 +132,7 @@ const DefectLabels = () => {
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(5.5);
           doc.setTextColor(0, 0, 0);
-          doc.text(watermarkText, 61.5, 23.5, { align: 'center' });
+          doc.text(watermarkText, 61.5, 21.5, { align: 'center' });
 
           // 2. Logo da loja
           if (logoBase64) {

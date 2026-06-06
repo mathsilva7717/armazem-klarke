@@ -36,20 +36,34 @@ const Login = () => {
       justifyContent: 'center'
     }}>
       <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
-        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-          <div style={{ 
+          <img 
+            src="/logok.png" 
+            alt="Logo" 
+            style={{ 
+              height: '64px', 
+              objectFit: 'contain', 
+              margin: '0 auto 16px',
+              display: 'block'
+            }} 
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const fb = document.getElementById('login-logo-fb');
+              if (fb) fb.style.display = 'flex';
+            }}
+          />
+          <div id="login-logo-fb" style={{ 
             width: '64px', 
             height: '64px', 
             background: 'var(--primary)', 
             borderRadius: '0', 
-            display: 'flex', 
+            display: 'none', 
             alignItems: 'center', 
             justifyContent: 'center',
             margin: '0 auto 16px',
           }}>
             <Box size={32} color="black" />
           </div>
-          <h1 style={{ fontSize: '1.6rem', fontWeight: '700', letterSpacing: '-0.5px' }}>Klarke Depot</h1>
+          <h1 style={{ fontSize: '1.6rem', fontWeight: '700', letterSpacing: '-0.5px' }}>Klarke Stock</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: '0.9rem', marginTop: '4px' }}>Sistema Integrado de Armazém</p>
         </div>
 

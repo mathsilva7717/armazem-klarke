@@ -102,18 +102,32 @@ const Dashboard = () => {
         borderBottom: '2px solid var(--primary)'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ 
+          <img 
+            src="/logok.png" 
+            alt="Logo" 
+            style={{ 
+              height: '44px', 
+              objectFit: 'contain',
+              display: 'block'
+            }} 
+            onError={(e) => {
+              e.currentTarget.style.display = 'none';
+              const fb = document.getElementById('dash-logo-fb');
+              if (fb) fb.style.display = 'flex';
+            }}
+          />
+          <div id="dash-logo-fb" style={{ 
             width: '44px', 
             height: '44px', 
             background: 'var(--primary)', 
-            display: 'flex', 
+            display: 'none', 
             alignItems: 'center', 
             justifyContent: 'center'
           }}>
             <Box color="black" size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.2rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Klarke Depot</h1>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Klarke Stock</h1>
             <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>Sistema Integrado de Armazém</p>
           </div>
         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { Toaster } from 'react-hot-toast';
+import { Toaster, toast } from 'react-hot-toast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
 import StockExit from './pages/StockExit';
@@ -30,6 +30,9 @@ function App() {
       return <Navigate to="/" replace />;
     }
     if (requireAdmin && !user.isAdmin) {
+      setTimeout(() => {
+        toast.error('Somente usuários administradores têm acesso.');
+      }, 0);
       return <Navigate to="/" replace />;
     }
     return children;

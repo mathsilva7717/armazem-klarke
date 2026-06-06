@@ -81,10 +81,10 @@ const DefectLabels = () => {
         if (i > 0) doc.addPage([82, 25], 'l');
 
         // --- ETIQUETA 1 (ESQUERDA - Centro em X = 20.5) ---
-        // 1. Marca d'água da loja
+        // 1. Marca d'água da loja (em preto sólido para imprimir em impressora térmica)
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(5.5);
-        doc.setTextColor(245, 158, 11); // tom amarelo/âmbar da loja
+        doc.setTextColor(0, 0, 0); 
         let watermarkText = storeName.toUpperCase();
         watermarkText = watermarkText.replace("PRAIA GRANDE", "PG").replace("SÃO VICENTE", "SV");
         doc.text(watermarkText, 20.5, 23.5, { align: 'center' });
@@ -128,10 +128,10 @@ const DefectLabels = () => {
 
         // --- ETIQUETA 2 (DIREITA - Centro em X = 61.5) ---
         if ((i * 2 + 1) < quantity) {
-          // 1. Marca d'água da loja
+          // 1. Marca d'água da loja (em preto sólido)
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(5.5);
-          doc.setTextColor(245, 158, 11); // tom amarelo/âmbar da loja
+          doc.setTextColor(0, 0, 0);
           doc.text(watermarkText, 61.5, 23.5, { align: 'center' });
 
           // 2. Logo da loja
@@ -192,85 +192,64 @@ const DefectLabels = () => {
 
     try {
       const logoBase64 = await getBase64ImageFromUrl('/loja.png');
-      const doc = new jsPDF('l', 'mm', [82, 25]);
+      // Gerando etiqueta tamanho 10x15 (105mm x 150mm) em formato Retrato
+      const doc = new jsPDF('p', 'mm', [105, 150]);
 
-      // --- ETIQUETA 1 (ESQUERDA - Centro em X = 20.5) ---
-      // 1. Logo da loja
+      // Borda superior decorativa em preto para impressora térmica
+      doc.setFillColor(0, 0, 0);
+      doc.rect(0, 0, 105, 4, 'F');
+
+      // 1. Logo da loja centralizado
       if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 4, 1.5, 8, 4.5);
+        doc.addImage(logoBase64, 'PNG', 32.5, 12, 40, 22);
       } else {
-        doc.setDrawColor(245, 158, 11);
-        doc.rect(4, 1.5, 8, 4.5);
+        doc.setDrawColor(0, 0, 0);
+        doc.setLineWidth(0.5);
+        doc.rect(32.5, 12, 40, 22);
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(10);
+        doc.setTextColor(0, 0, 0);
+        doc.text("LOGO LOJA", 52.5, 25, { align: 'center' });
       }
 
-      // 2. Loja
+      // 2. Loja centralizado
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4.5);
+      doc.setFontSize(9.5);
       doc.setTextColor(0, 0, 0);
-      let shortStoreName = storeName.toUpperCase();
-      shortStoreName = shortStoreName.replace("PRAIA GRANDE", "PG").replace("SÃO VICENTE", "SV");
-      doc.text(shortStoreName, 14, 4.5);
+      let formattedStore = storeName.toUpperCase();
+      formattedStore = formattedStore.replace("PRAIA GRANDE", "PG").replace("SÃO VICENTE", "SV");
+      doc.text(formattedStore, 52.5, 42, { align: 'center' });
 
-      // 3. Título Conferência
+      // 3. Título Principal
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
+      doc.setFontSize(13);
       doc.setTextColor(0, 0, 0);
-      doc.text("TERMO DE CONFERÊNCIA", 20.5, 9.5, { align: 'center' });
+      doc.text("TERMO DE CONFERÊNCIA", 52.5, 58, { align: 'center' });
 
-      // 4. Data
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(5.5);
-      doc.setTextColor(0, 0, 0);
-      doc.text("DATA: ____/____/______", 20.5, 14, { align: 'center' });
-
-      // 5. Linha de Assinatura
+      // Linha separadora
       doc.setDrawColor(0, 0, 0);
-      doc.setLineWidth(0.25);
-      doc.line(6, 19.5, 35, 19.5);
-
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4.5);
-      doc.setTextColor(0, 0, 0);
-      doc.text("ASSINATURA DO CONFERENTE", 20.5, 23, { align: 'center' });
-
-      // --- ETIQUETA 2 (DIREITA - Centro em X = 61.5) ---
-      // 1. Logo da loja
-      if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 45, 1.5, 8, 4.5);
-      } else {
-        doc.setDrawColor(245, 158, 11);
-        doc.rect(45, 1.5, 8, 4.5);
-      }
-
-      // 2. Loja
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4.5);
-      doc.setTextColor(0, 0, 0);
-      doc.text(shortStoreName, 55, 4.5);
-
-      // 3. Título Conferência
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
-      doc.setTextColor(0, 0, 0);
-      doc.text("TERMO DE CONFERÊNCIA", 61.5, 9.5, { align: 'center' });
+      doc.setLineWidth(0.4);
+      doc.line(15, 63, 90, 63);
 
       // 4. Data
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(5.5);
+      doc.setFontSize(11);
       doc.setTextColor(0, 0, 0);
-      doc.text("DATA: ____/____/______", 61.5, 14, { align: 'center' });
+      doc.text("DATA: ____/____/______", 52.5, 78, { align: 'center' });
 
-      // 5. Linha de Assinatura
-      doc.line(47, 19.5, 76, 19.5);
+      // 5. Linha de Assinatura (Ampla)
+      doc.setDrawColor(0, 0, 0);
+      doc.setLineWidth(0.4);
+      doc.line(15, 115, 90, 115);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4.5);
+      doc.setFontSize(8.5);
       doc.setTextColor(0, 0, 0);
-      doc.text("ASSINATURA DO CONFERENTE", 61.5, 23, { align: 'center' });
+      doc.text("ASSINATURA DO CONFERENTE", 52.5, 122, { align: 'center' });
 
       doc.output('dataurlnewwindow');
       toast.dismiss(loadToast);
-      toast.success('Termo de Conferência gerado!');
+      toast.success('Termo de Conferência (10x15) gerado!');
     } catch (err) {
       console.error(err);
       toast.dismiss(loadToast);

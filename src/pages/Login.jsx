@@ -36,6 +36,7 @@ const Login = () => {
       justifyContent: 'center'
     }}>
       <div className="glass-card animate-fade-in" style={{ width: '100%', maxWidth: '400px', padding: '40px' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
           <img 
             src="/logok.png" 
             alt="Logo" 

@@ -288,6 +288,7 @@ const StockExit = () => {
                 type="date" 
                 value={formData.date}
                 onChange={handleInputChange}
+                onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
                 required
               />
             </div>
@@ -338,6 +339,7 @@ const StockExit = () => {
                   type="date" 
                   value={filterDates.start}
                   onChange={(e) => setFilterDates({...filterDates, start: e.target.value})}
+                  onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
                   style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
                 />
               </div>
@@ -347,6 +349,7 @@ const StockExit = () => {
                   type="date" 
                   value={filterDates.end}
                   onChange={(e) => setFilterDates({...filterDates, end: e.target.value})}
+                  onClick={(e) => { try { e.target.showPicker(); } catch (err) {} }}
                   style={{ background: '#111', border: '1px solid var(--border)', color: '#fff', padding: '8px', width: '100%', fontSize: '0.8rem' }}
                 />
               </div>

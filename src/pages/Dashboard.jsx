@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Printer, Search, Users, LogOut, Box, ArrowRight } from 'lucide-react';
+import { Package, Printer, Search, Users, LogOut, Box, ArrowRight, FileText, AlertTriangle } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
@@ -28,6 +28,20 @@ const Dashboard = () => {
       desc: 'Gerar lotes de etiquetas térmicas',
       icon: <Printer size={32} />,
       path: '/labels',
+      color: 'var(--primary)'
+    },
+    {
+      title: 'Etiquetas de Defeito',
+      desc: 'Emitir etiquetas de avaria para as lojas',
+      icon: <AlertTriangle size={32} />,
+      path: '/defect-labels',
+      color: 'var(--primary)'
+    },
+    {
+      title: 'Pedido de Compras',
+      desc: 'Gerar solicitações de compra em PDF',
+      icon: <FileText size={32} />,
+      path: '/purchase-order',
       color: 'var(--primary)'
     },
     {

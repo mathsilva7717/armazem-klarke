@@ -7,6 +7,9 @@ import StockExit from './pages/StockExit';
 import Users from './pages/Users';
 import Labels from './pages/Labels';
 import ProductSearch from './pages/ProductSearch';
+import ResetPassword from './pages/ResetPassword';
+import PurchaseOrder from './pages/PurchaseOrder';
+import DefectLabels from './pages/DefectLabels';
 
 function App() {
   // Simple auth check mock
@@ -14,9 +17,16 @@ function App() {
     return localStorage.getItem('armazem_auth') === 'true';
   };
 
-  const ProtectedRoute = ({ children }) => {
+  const ProtectedRoute = ({ children, allowReset = false }) => {
     if (!isAuthenticated()) {
       return <Navigate to="/login" replace />;
+    }
+    const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
+    if (user.mustChangePassword && !allowReset) {
+      return <Navigate to="/reset-password" replace />;
+    }
+    if (!user.mustChangePassword && allowReset) {
+      return <Navigate to="/" replace />;
     }
     return children;
   };
@@ -32,6 +42,14 @@ function App() {
       }} />
       <Routes>
         <Route path="/login" element={<Login />} />
+        <Route 
+          path="/reset-password" 
+          element={
+            <ProtectedRoute allowReset={true}>
+              <ResetPassword />
+            </ProtectedRoute>
+          } 
+        />
         <Route 
           path="/" 
           element={
@@ -69,6 +87,22 @@ function App() {
           element={
             <ProtectedRoute>
               <ProductSearch />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/purchase-order" 
+          element={
+            <ProtectedRoute>
+              <PurchaseOrder />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/defect-labels" 
+          element={
+            <ProtectedRoute>
+              <DefectLabels />
             </ProtectedRoute>
           } 
         />

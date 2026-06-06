@@ -1,6 +1,6 @@
 const express = require('express');
 const cors = require('cors');
-const Database = require('better-sqlite3');
+const { DatabaseSync } = require('node:sqlite');
 const path = require('path');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
@@ -15,8 +15,8 @@ app.use(express.json());
 
 // Database setup
 const dbPath = path.join(__dirname, 'armazem.sqlite');
-const db = new Database(dbPath);
-console.log('Conectado ao banco de dados SQLite do Armazém via better-sqlite3.');
+const db = new DatabaseSync(dbPath);
+console.log('Conectado ao banco de dados SQLite do Armazém via node:sqlite.');
 
 initDb();
 
@@ -114,7 +114,8 @@ app.post('/api/login', (req, res) => {
       user: { 
         id: user.id, 
         username: user.username, 
-        name: user.name
+        name: user.name,
+        mustChangePassword: !!user.must_change_password
       } 
     });
   } catch (err) {
@@ -122,8 +123,27 @@ app.post('/api/login', (req, res) => {
   }
 });
 
+// Change Password
+app.post('/api/change-password', authenticateToken, (req, res) => {
+  const { newPassword } = req.body;
+  const userId = req.user.id;
+
+  if (!newPassword || newPassword.length < 6) {
+    return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
+  }
+
+  const hashedPassword = bcrypt.hashSync(newPassword, 10);
+
+  try {
+    db.prepare("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?").run(hashedPassword, userId);
+    res.json({ message: 'Senha atualizada com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get Stock Exits
-app.get('/api/exits', (req, res) => {
+app.get('/api/exits', authenticateToken, (req, res) => {
   try {
     const rows = db.prepare(`
         SELECT e.*, u.name as operator_name 
@@ -138,10 +158,9 @@ app.get('/api/exits', (req, res) => {
 });
 
 // Register Stock Exit
-app.post('/api/exits', (req, res) => {
+app.post('/api/exits', authenticateToken, (req, res) => {
   const { sku, quantity, store, date, unit_price } = req.body;
-  // Fallback para o operador caso não tenha token
-  const operator_id = req.user ? req.user.id : 1; 
+  const operator_id = req.user.id; 
 
   try {
     const info = db.prepare(

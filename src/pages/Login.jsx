@@ -16,6 +16,7 @@ const Login = () => {
 
     try {
       const response = await api.post('/login', { username, password });
+      localStorage.setItem('armazem_token', response.data.token);
       localStorage.setItem('armazem_user', JSON.stringify(response.data.user));
       localStorage.setItem('armazem_auth', 'true');
       toast.success(`Bem-vindo, ${response.data.user.name}!`);

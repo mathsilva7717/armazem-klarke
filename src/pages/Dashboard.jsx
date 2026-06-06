@@ -113,8 +113,8 @@ const Dashboard = () => {
             <Box color="black" size={24} />
           </div>
           <div>
-            <h1 style={{ fontSize: '1.2rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>ARMAZEM CONTROLE</h1>
-            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>Painel Administrativo</p>
+            <h1 style={{ fontSize: '1.2rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Warehouse Control</h1>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '700' }}>Integrated Warehouse System</p>
           </div>
         </div>
 

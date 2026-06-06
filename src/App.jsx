@@ -17,7 +17,7 @@ function App() {
     return localStorage.getItem('armazem_auth') === 'true';
   };
 
-  const ProtectedRoute = ({ children, allowReset = false }) => {
+  const ProtectedRoute = ({ children, allowReset = false, requireAdmin = false }) => {
     if (!isAuthenticated()) {
       return <Navigate to="/login" replace />;
     }
@@ -26,6 +26,9 @@ function App() {
       return <Navigate to="/reset-password" replace />;
     }
     if (!user.mustChangePassword && allowReset) {
+      return <Navigate to="/" replace />;
+    }
+    if (requireAdmin && !user.isAdmin) {
       return <Navigate to="/" replace />;
     }
     return children;
@@ -69,7 +72,7 @@ function App() {
         <Route 
           path="/users" 
           element={
-            <ProtectedRoute>
+            <ProtectedRoute requireAdmin={true}>
               <Users />
             </ProtectedRoute>
           } 

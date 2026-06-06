@@ -37,12 +37,14 @@ function initDb() {
       password TEXT,
       name TEXT,
       must_change_password INTEGER DEFAULT 1,
+      is_admin INTEGER DEFAULT 0,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
     // Migração: Adiciona a coluna se ela não existir (para bancos antigos)
     try {
-        // Apenas para não dar erro se já existir, mas não vamos usar a lógica
+        db.prepare("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0").run();
+        console.log('Coluna is_admin adicionada à tabela users.');
     } catch (e) { }
 
     // Stock Exits table
@@ -83,8 +85,11 @@ function initDb() {
     const row = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
     if (!row) {
         const hashedPassword = bcrypt.hashSync('senha123', 10);
-        db.prepare("INSERT INTO users (username, password, name, must_change_password) VALUES (?, ?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém', 0);
+        db.prepare("INSERT INTO users (username, password, name, must_change_password, is_admin) VALUES (?, ?, ?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém', 0, 1);
         console.log('Usuário admin padrão criado: admin / senha123');
+    } else {
+        // Garantir que o admin existente é admin
+        db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'admin'").run();
     }
 }
 
@@ -102,6 +107,14 @@ const authenticateToken = (req, res, next) => {
   });
 };
 
+// Middleware de Administrador
+const requireAdmin = (req, res, next) => {
+  if (!req.user || !req.user.isAdmin) {
+    return res.status(403).json({ error: 'Acesso negado. Apenas administradores podem realizar esta operação.' });
+  }
+  next();
+};
+
 // Routes
 
 // Login
@@ -114,7 +127,7 @@ app.post('/api/login', (req, res) => {
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Senha incorreta' });
 
-    const token = jwt.sign({ id: user.id, username: user.username }, JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id, username: user.username, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: '8h' });
     const mustChange = !!user.must_change_password;
     console.log(`Usuário ${username} logado. Precisa trocar senha? ${mustChange}`);
     
@@ -124,7 +137,8 @@ app.post('/api/login', (req, res) => {
         id: user.id, 
         username: user.username, 
         name: user.name,
-        mustChangePassword: !!user.must_change_password
+        mustChangePassword: !!user.must_change_password,
+        isAdmin: !!user.is_admin
       } 
     });
   } catch (err) {
@@ -181,14 +195,15 @@ app.post('/api/exits', authenticateToken, (req, res) => {
   }
 });
 
-// Create User (Only for management, for now simplified)
-app.post('/api/users', async (req, res) => {
-  const { username, password, name } = req.body;
+// Create User (Only for management)
+app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
+  const { username, password, name, is_admin } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
+  const isAdminVal = is_admin ? 1 : 0;
   
   try {
-    const info = db.prepare("INSERT INTO users (username, password, name) VALUES (?, ?, ?)").run(username, hashedPassword, name);
-    res.status(201).json({ id: info.lastInsertRowid, username, name });
+    const info = db.prepare("INSERT INTO users (username, password, name, is_admin) VALUES (?, ?, ?, ?)").run(username, hashedPassword, name, isAdminVal);
+    res.status(201).json({ id: info.lastInsertRowid, username, name, is_admin: isAdminVal });
   } catch (err) {
     res.status(500).json({ error: 'Usuário já existe' });
   }
@@ -197,9 +212,9 @@ app.post('/api/users', async (req, res) => {
 
 
 // Get all users
-app.get('/api/users', authenticateToken, (req, res) => {
+app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
   try {
-    const rows = db.prepare("SELECT id, username, name, created_at FROM users").all();
+    const rows = db.prepare("SELECT id, username, name, is_admin, created_at FROM users").all();
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -207,7 +222,7 @@ app.get('/api/users', authenticateToken, (req, res) => {
 });
 
 // Delete user
-app.delete('/api/users/:id', authenticateToken, (req, res) => {
+app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
   const { id } = req.params;
   
   // Impedir exclusão do admin (ID 1)

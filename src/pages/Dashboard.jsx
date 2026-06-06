@@ -58,7 +58,12 @@ const Dashboard = () => {
       path: '/users',
       color: 'var(--primary)'
     }
-  ];
+  ].filter(item => {
+    if (item.path === '/users') {
+      return !!user.isAdmin;
+    }
+    return true;
+  });
 
   return (
     <div style={{ minHeight: '100vh', padding: '20px', display: 'flex', flexDirection: 'column' }}>

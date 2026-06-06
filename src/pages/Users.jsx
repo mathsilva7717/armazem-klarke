@@ -11,7 +11,8 @@ const Users = () => {
   const [formData, setFormData] = useState({
     username: '',
     password: '',
-    name: ''
+    name: '',
+    is_admin: false
   });
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
@@ -48,7 +49,7 @@ const Users = () => {
     try {
       await api.post('/users', formData);
       toast.success('Usuário cadastrado com sucesso!');
-      setFormData({ username: '', password: '', name: '' });
+      setFormData({ username: '', password: '', name: '', is_admin: false });
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.error || 'Erro ao cadastrar usuário.');
@@ -165,6 +166,20 @@ const Users = () => {
               />
             </div>
 
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0 24px' }}>
+              <input 
+                name="is_admin"
+                type="checkbox" 
+                id="is_admin"
+                checked={formData.is_admin}
+                onChange={(e) => setFormData(prev => ({ ...prev, is_admin: e.target.checked }))}
+                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+              />
+              <label htmlFor="is_admin" style={{ cursor: 'pointer', userSelect: 'none', margin: 0, fontWeight: '600', fontSize: '0.85rem', display: 'inline-block', color: 'var(--text-main)' }}>
+                Tornar este usuário Administrador
+              </label>
+            </div>
+
             <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
               {loading ? 'Cadastrando...' : <><UserPlus size={18} /> Cadastrar Operador</>}
             </button>
@@ -182,6 +197,7 @@ const Users = () => {
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Nome</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Usuário</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Cargo</th>
                   <th style={{ padding: '12px' }}></th>
                 </tr>
               </thead>
@@ -190,6 +206,19 @@ const Users = () => {
                   <tr key={u.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.5)' }}>
                     <td data-label="Nome" style={{ padding: '12px', fontWeight: '600' }}>{u.name}</td>
                     <td data-label="Usuário" style={{ padding: '12px' }}>{u.username}</td>
+                    <td data-label="Cargo" style={{ padding: '12px' }}>
+                      <span style={{ 
+                        fontSize: '0.75rem', 
+                        padding: '4px 8px', 
+                        fontWeight: '700', 
+                        textTransform: 'uppercase',
+                        background: u.is_admin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                        color: u.is_admin ? 'var(--primary)' : 'var(--text-muted)',
+                        border: u.is_admin ? '1px solid var(--primary)' : '1px solid var(--border)'
+                      }}>
+                        {u.is_admin ? 'Administrador' : 'Operador'}
+                      </span>
+                    </td>
                     <td style={{ padding: '12px', textAlign: 'right' }}>
                       {u.username !== 'admin' && (
                         <button 

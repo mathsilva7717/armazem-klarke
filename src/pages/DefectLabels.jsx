@@ -197,10 +197,10 @@ const DefectLabels = () => {
       // --- ETIQUETA 1 (ESQUERDA - Centro em X = 20.5) ---
       // 1. Logo da loja
       if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 4, 2, 8, 4.5);
+        doc.addImage(logoBase64, 'PNG', 4, 1.5, 8, 4.5);
       } else {
         doc.setDrawColor(245, 158, 11);
-        doc.rect(4, 2, 8, 4.5);
+        doc.rect(4, 1.5, 8, 4.5);
       }
 
       // 2. Loja
@@ -209,52 +209,64 @@ const DefectLabels = () => {
       doc.setTextColor(0, 0, 0);
       let shortStoreName = storeName.toUpperCase();
       shortStoreName = shortStoreName.replace("PRAIA GRANDE", "PG").replace("SÃO VICENTE", "SV");
-      doc.text(shortStoreName, 14, 5);
+      doc.text(shortStoreName, 14, 4.5);
 
       // 3. Título Conferência
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(0, 0, 0);
-      doc.text("TERMO DE CONFERÊNCIA", 20.5, 10.5, { align: 'center' });
+      doc.text("TERMO DE CONFERÊNCIA", 20.5, 9.5, { align: 'center' });
 
-      // 4. Linha de Assinatura
+      // 4. Data
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("DATA: ____/____/______", 20.5, 14, { align: 'center' });
+
+      // 5. Linha de Assinatura
       doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.25);
-      doc.line(6, 17.5, 35, 17.5);
+      doc.line(6, 19.5, 35, 19.5);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(4.5);
       doc.setTextColor(0, 0, 0);
-      doc.text("ASSINATURA DO CONFERENTE", 20.5, 21.5, { align: 'center' });
+      doc.text("ASSINATURA DO CONFERENTE", 20.5, 23, { align: 'center' });
 
       // --- ETIQUETA 2 (DIREITA - Centro em X = 61.5) ---
       // 1. Logo da loja
       if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 45, 2, 8, 4.5);
+        doc.addImage(logoBase64, 'PNG', 45, 1.5, 8, 4.5);
       } else {
         doc.setDrawColor(245, 158, 11);
-        doc.rect(45, 2, 8, 4.5);
+        doc.rect(45, 1.5, 8, 4.5);
       }
 
       // 2. Loja
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(4.5);
       doc.setTextColor(0, 0, 0);
-      doc.text(shortStoreName, 55, 5);
+      doc.text(shortStoreName, 55, 4.5);
 
       // 3. Título Conferência
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7.5);
+      doc.setFontSize(7);
       doc.setTextColor(0, 0, 0);
-      doc.text("TERMO DE CONFERÊNCIA", 61.5, 10.5, { align: 'center' });
+      doc.text("TERMO DE CONFERÊNCIA", 61.5, 9.5, { align: 'center' });
 
-      // 4. Linha de Assinatura
-      doc.line(47, 17.5, 76, 17.5);
+      // 4. Data
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(5.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("DATA: ____/____/______", 61.5, 14, { align: 'center' });
+
+      // 5. Linha de Assinatura
+      doc.line(47, 19.5, 76, 19.5);
 
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(4.5);
       doc.setTextColor(0, 0, 0);
-      doc.text("ASSINATURA DO CONFERENTE", 61.5, 21.5, { align: 'center' });
+      doc.text("ASSINATURA DO CONFERENTE", 61.5, 23, { align: 'center' });
 
       doc.output('dataurlnewwindow');
       toast.dismiss(loadToast);

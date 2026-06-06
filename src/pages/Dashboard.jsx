@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Printer, Search, Users, LogOut, Box, ArrowRight, FileText, AlertTriangle } from 'lucide-react';
+import { Package, Printer, Search, Users, LogOut, Box, ArrowRight, FileText, AlertTriangle, Terminal } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
@@ -57,9 +57,16 @@ const Dashboard = () => {
       icon: <Users size={32} />,
       path: '/users',
       color: 'var(--primary)'
+    },
+    {
+      title: 'Logs do Sistema',
+      desc: 'Histórico de auditoria de ações',
+      icon: <Terminal size={32} />,
+      path: '/logs',
+      color: 'var(--primary)'
     }
   ].filter(item => {
-    if (item.path === '/users') {
+    if (item.path === '/users' || item.path === '/logs') {
       return !!user.isAdmin;
     }
     return true;

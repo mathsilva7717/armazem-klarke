@@ -91,6 +91,16 @@ function initDb() {
         // Garantir que o admin existente é admin
         db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'admin'").run();
     }
+
+    // Audit logs table
+    db.exec(`CREATE TABLE IF NOT EXISTS audit_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      user_id INTEGER,
+      username TEXT,
+      action TEXT,
+      details TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )`);
 }
 
 // Middleware de Autenticação
@@ -115,6 +125,17 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
+// Gravação de Logs de Auditoria
+function logAction(userId, username, action, details) {
+  try {
+    db.prepare("INSERT INTO audit_logs (user_id, username, action, details) VALUES (?, ?, ?, ?)")
+      .run(userId || null, username || null, action, details || null);
+    console.log(`[LOG] User ${username || 'System'}: ${action} - ${details || ''}`);
+  } catch (err) {
+    console.error("Erro ao gravar log no banco:", err.message);
+  }
+}
+
 // Routes
 
 // Login
@@ -131,6 +152,8 @@ app.post('/api/login', (req, res) => {
     const mustChange = !!user.must_change_password;
     console.log(`Usuário ${username} logado. Precisa trocar senha? ${mustChange}`);
     
+    logAction(user.id, user.username, 'LOGIN', 'Login realizado com sucesso');
+
     res.json({ 
       token, 
       user: { 
@@ -159,6 +182,7 @@ app.post('/api/change-password', authenticateToken, (req, res) => {
 
   try {
     db.prepare("UPDATE users SET password = ?, must_change_password = 0 WHERE id = ?").run(hashedPassword, userId);
+    logAction(userId, req.user.username, 'TROCA_SENHA', 'Senha alterada pelo próprio usuário');
     res.json({ message: 'Senha atualizada com sucesso!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -189,6 +213,7 @@ app.post('/api/exits', authenticateToken, (req, res) => {
     const info = db.prepare(
         "INSERT INTO stock_exits (sku, quantity, store, exit_date, operator_id, unit_price) VALUES (?, ?, ?, ?, ?, ?)"
       ).run(sku, quantity, store, date, operator_id, unit_price || 0);
+    logAction(operator_id, req.user.username, 'REGISTRO_SAIDA', `Registrou saída do SKU: ${sku} | Qtd: ${quantity} | Loja: ${store}`);
     res.status(201).json({ id: info.lastInsertRowid, sku, quantity, store, date, unit_price: unit_price || 0 });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -203,6 +228,7 @@ app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
   
   try {
     const info = db.prepare("INSERT INTO users (username, password, name, is_admin) VALUES (?, ?, ?, ?)").run(username, hashedPassword, name, isAdminVal);
+    logAction(req.user.id, req.user.username, 'CADASTRAR_USUARIO', `Cadastrou operador: ${username} | Nome: ${name} | Cargo: ${isAdminVal ? 'Administrador' : 'Operador'}`);
     res.status(201).json({ id: info.lastInsertRowid, username, name, is_admin: isAdminVal });
   } catch (err) {
     res.status(500).json({ error: 'Usuário já existe' });
@@ -231,7 +257,11 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
   }
 
   try {
+    const deletedUser = db.prepare("SELECT username FROM users WHERE id = ?").get(id);
+    const deletedUsername = deletedUser ? deletedUser.username : id;
+
     db.prepare("DELETE FROM users WHERE id = ?").run(id);
+    logAction(req.user.id, req.user.username, 'EXCLUIR_USUARIO', `Excluiu o operador: ${deletedUsername}`);
     res.json({ message: 'Usuário excluído com sucesso!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -251,7 +281,11 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
   const isAdminVal = is_admin ? 1 : 0;
 
   try {
+    const targetUser = db.prepare("SELECT username FROM users WHERE id = ?").get(id);
+    const targetUsername = targetUser ? targetUser.username : id;
+
     db.prepare("UPDATE users SET is_admin = ? WHERE id = ?").run(isAdminVal, id);
+    logAction(req.user.id, req.user.username, 'ALTERAR_CARGO', `Alterou o cargo de ${targetUsername} para: ${isAdminVal ? 'Administrador' : 'Operador'}`);
     res.json({ message: 'Cargo atualizado com sucesso!', is_admin: isAdminVal });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -261,7 +295,7 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
 // PRODUCTS DATABASE (LEARNING SYSTEM)
 
 // Save/Update Product
-app.post('/api/products', (req, res) => {
+app.post('/api/products', authenticateToken, (req, res) => {
   const { sku, name, weight, dimensions, ncm, cest } = req.body;
   const { width, height, length } = dimensions || { width: 0, height: 0, length: 0 };
 
@@ -278,6 +312,7 @@ app.post('/api/products', (req, res) => {
           ncm=excluded.ncm,
           cest=excluded.cest
       `).run(sku, name, weight, width, height, length, ncm, cest);
+    logAction(req.user.id, req.user.username, 'SALVAR_PRODUTO', `Salvou/Atualizou produto SKU: ${sku} | Nome: ${name}`);
     res.status(200).json({ message: 'Produto salvo com sucesso!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -285,11 +320,21 @@ app.post('/api/products', (req, res) => {
 });
 
 // Search Product in DB
-app.get('/api/products/:query', (req, res) => {
+app.get('/api/products/:query', authenticateToken, (req, res) => {
   const query = req.params.query;
   try {
     const row = db.prepare("SELECT * FROM products WHERE sku = ? OR name LIKE ?").get(query, `%${query}%`);
     res.json(row || null);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all audit logs (Only for admins)
+app.get('/api/logs', authenticateToken, requireAdmin, (req, res) => {
+  try {
+    const rows = db.prepare("SELECT * FROM audit_logs ORDER BY created_at DESC").all();
+    res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

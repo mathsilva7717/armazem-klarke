@@ -15,6 +15,25 @@ const Users = () => {
     is_admin: false
   });
 
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmConfig({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
+
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
 
   const handleLogout = () => {
@@ -58,19 +77,24 @@ const Users = () => {
     }
   };
 
-  const handleDelete = async (id) => {
-    if (window.confirm('Tem certeza que deseja excluir este operador?')) {
-      try {
-        await api.delete(`/users/${id}`);
-        toast.success('Usuário excluído!');
-        fetchUsers();
-      } catch (error) {
-        toast.error(error.response?.data?.error || 'Erro ao excluir usuário.');
+  const handleDelete = (id) => {
+    const targetUser = users.find(u => u.id === id);
+    showConfirm(
+      'Confirmar Exclusão',
+      `Tem certeza que deseja excluir o operador "${targetUser?.name || targetUser?.username}"? Esta ação não pode ser desfeita.`,
+      async () => {
+        try {
+          await api.delete(`/users/${id}`);
+          toast.success('Usuário excluído!');
+          fetchUsers();
+        } catch (error) {
+          toast.error(error.response?.data?.error || 'Erro ao excluir usuário.');
+        }
       }
-    }
+    );
   };
 
-  const handleToggleRole = async (id, currentIsAdmin) => {
+  const handleToggleRole = (id, currentIsAdmin) => {
     const targetUser = users.find(u => u.id === id);
     if (targetUser && targetUser.username === 'admin') {
       toast.error('O cargo do administrador principal não pode ser alterado.');
@@ -78,19 +102,24 @@ const Users = () => {
     }
 
     const newIsAdmin = !currentIsAdmin;
+    const confirmTitle = newIsAdmin ? 'Promover Operador' : 'Alterar Cargo';
     const confirmMsg = newIsAdmin 
       ? `Deseja promover o usuário "${targetUser?.name || targetUser?.username}" para Administrador?` 
       : `Deseja alterar o cargo de "${targetUser?.name || targetUser?.username}" para Operador?`;
 
-    if (window.confirm(confirmMsg)) {
-      try {
-        await api.put(`/users/${id}/role`, { is_admin: newIsAdmin });
-        toast.success('Cargo atualizado com sucesso!');
-        fetchUsers();
-      } catch (error) {
-        toast.error(error.response?.data?.error || 'Erro ao atualizar cargo.');
+    showConfirm(
+      confirmTitle,
+      confirmMsg,
+      async () => {
+        try {
+          await api.put(`/users/${id}/role`, { is_admin: newIsAdmin });
+          toast.success('Cargo atualizado com sucesso!');
+          fetchUsers();
+        } catch (error) {
+          toast.error(error.response?.data?.error || 'Erro ao atualizar cargo.');
+        }
       }
-    }
+    );
   };
 
   return (
@@ -287,6 +316,67 @@ const Users = () => {
           </div>
         </section>
       </main>
+      {confirmConfig.isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.8)',
+          backdropFilter: 'blur(4px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 9999,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            maxWidth: '400px',
+            width: '100%',
+            padding: '32px',
+            background: 'var(--bg-card)',
+            border: '1px solid var(--border)',
+            boxShadow: '10px 10px 0px rgba(0, 0, 0, 1)'
+          }}>
+            <h3 style={{ fontSize: '1rem', fontWeight: '900', textTransform: 'uppercase', marginBottom: '16px', color: 'var(--primary)', letterSpacing: '1px' }}>
+              {confirmConfig.title}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginBottom: '28px', lineHeight: '1.5' }}>
+              {confirmConfig.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border)',
+                  padding: '10px 20px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px'
+                }}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmConfig.onConfirm}
+                className="btn-primary"
+                style={{
+                  padding: '10px 20px',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px'
+                }}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

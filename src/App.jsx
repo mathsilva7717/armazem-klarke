@@ -10,6 +10,7 @@ import ProductSearch from './pages/ProductSearch';
 import ResetPassword from './pages/ResetPassword';
 import PurchaseOrder from './pages/PurchaseOrder';
 import DefectLabels from './pages/DefectLabels';
+import Logs from './pages/Logs';
 
 function App() {
   // Simple auth check mock
@@ -74,6 +75,14 @@ function App() {
           element={
             <ProtectedRoute requireAdmin={true}>
               <Users />
+            </ProtectedRoute>
+          } 
+        />
+        <Route 
+          path="/logs" 
+          element={
+            <ProtectedRoute requireAdmin={true}>
+              <Logs />
             </ProtectedRoute>
           } 
         />

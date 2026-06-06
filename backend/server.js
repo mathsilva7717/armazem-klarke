@@ -238,6 +238,26 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
+// Toggle user role
+app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { is_admin } = req.body;
+  
+  // Impedir alteração do admin principal (ID 1)
+  if (parseInt(id) === 1) {
+    return res.status(403).json({ error: 'O cargo do administrador principal não pode ser alterado.' });
+  }
+
+  const isAdminVal = is_admin ? 1 : 0;
+
+  try {
+    db.prepare("UPDATE users SET is_admin = ? WHERE id = ?").run(isAdminVal, id);
+    res.json({ message: 'Cargo atualizado com sucesso!', is_admin: isAdminVal });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PRODUCTS DATABASE (LEARNING SYSTEM)
 
 // Save/Update Product

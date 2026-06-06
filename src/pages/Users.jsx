@@ -70,6 +70,29 @@ const Users = () => {
     }
   };
 
+  const handleToggleRole = async (id, currentIsAdmin) => {
+    const targetUser = users.find(u => u.id === id);
+    if (targetUser && targetUser.username === 'admin') {
+      toast.error('O cargo do administrador principal não pode ser alterado.');
+      return;
+    }
+
+    const newIsAdmin = !currentIsAdmin;
+    const confirmMsg = newIsAdmin 
+      ? `Deseja promover o usuário "${targetUser?.name || targetUser?.username}" para Administrador?` 
+      : `Deseja alterar o cargo de "${targetUser?.name || targetUser?.username}" para Operador?`;
+
+    if (window.confirm(confirmMsg)) {
+      try {
+        await api.put(`/users/${id}/role`, { is_admin: newIsAdmin });
+        toast.success('Cargo atualizado com sucesso!');
+        fetchUsers();
+      } catch (error) {
+        toast.error(error.response?.data?.error || 'Erro ao atualizar cargo.');
+      }
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <header style={{ 
@@ -207,15 +230,33 @@ const Users = () => {
                     <td data-label="Nome" style={{ padding: '12px', fontWeight: '600' }}>{u.name}</td>
                     <td data-label="Usuário" style={{ padding: '12px' }}>{u.username}</td>
                     <td data-label="Cargo" style={{ padding: '12px' }}>
-                      <span style={{ 
-                        fontSize: '0.75rem', 
-                        padding: '4px 8px', 
-                        fontWeight: '700', 
-                        textTransform: 'uppercase',
-                        background: u.is_admin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                        color: u.is_admin ? 'var(--primary)' : 'var(--text-muted)',
-                        border: u.is_admin ? '1px solid var(--primary)' : '1px solid var(--border)'
-                      }}>
+                      <span 
+                        onClick={() => u.username !== 'admin' && handleToggleRole(u.id, u.is_admin)}
+                        title={u.username === 'admin' ? '' : 'Clique para alterar o cargo deste usuário'}
+                        style={{ 
+                          fontSize: '0.75rem', 
+                          padding: '4px 8px', 
+                          fontWeight: '700', 
+                          textTransform: 'uppercase',
+                          background: u.is_admin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)',
+                          color: u.is_admin ? 'var(--primary)' : 'var(--text-muted)',
+                          border: u.is_admin ? '1px solid var(--primary)' : '1px solid var(--border)',
+                          cursor: u.username === 'admin' ? 'default' : 'pointer',
+                          userSelect: 'none',
+                          transition: 'all 0.2s ease',
+                          display: 'inline-block'
+                        }}
+                        onMouseEnter={(e) => {
+                          if (u.username !== 'admin') {
+                            e.currentTarget.style.background = u.is_admin ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.15)';
+                          }
+                        }}
+                        onMouseLeave={(e) => {
+                          if (u.username !== 'admin') {
+                            e.currentTarget.style.background = u.is_admin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+                          }
+                        }}
+                      >
                         {u.is_admin ? 'Administrador' : 'Operador'}
                       </span>
                     </td>

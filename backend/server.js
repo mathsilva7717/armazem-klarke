@@ -328,6 +328,31 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
+// Reset user password
+app.post('/api/users/:id/reset-password', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  
+  // Impedir alteração do admin principal (ID 1)
+  if (parseInt(id) === 1) {
+    return res.status(403).json({ error: 'A senha do administrador principal não pode ser resetada.' });
+  }
+
+  const hashedPassword = bcrypt.hashSync('123456', 10);
+
+  try {
+    const targetUser = db.prepare("SELECT username FROM users WHERE id = ?").get(id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    db.prepare("UPDATE users SET password = ?, must_change_password = 1 WHERE id = ?").run(hashedPassword, id);
+    logAction(req.user.id, req.user.username, 'RESET_SENHA_USUARIO', `Resetou a senha de ${targetUser.username} para o padrão (123456)`);
+    res.json({ message: 'Senha resetada com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PRODUCTS DATABASE (LEARNING SYSTEM)
 
 // Save/Update Product

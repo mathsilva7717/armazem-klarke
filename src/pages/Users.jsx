@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Users as UsersIcon, ArrowLeft, Trash2, User, Lock, Tag, LogOut } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, ArrowLeft, Trash2, User, Lock, Tag, LogOut, KeyRound } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
 
@@ -89,6 +89,23 @@ const Users = () => {
           fetchUsers();
         } catch (error) {
           toast.error(error.response?.data?.error || 'Erro ao excluir usuário.');
+        }
+      }
+    );
+  };
+
+  const handleResetPassword = (id) => {
+    const targetUser = users.find(u => u.id === id);
+    showConfirm(
+      'Resetar Senha',
+      `Tem certeza que deseja resetar a senha do operador "${targetUser?.name || targetUser?.username}" para o padrão "123456"? Ele precisará alterá-la no próximo login.`,
+      async () => {
+        try {
+          await api.post(`/users/${id}/reset-password`);
+          toast.success('Senha resetada para 123456!');
+          fetchUsers();
+        } catch (error) {
+          toast.error(error.response?.data?.error || 'Erro ao resetar senha.');
         }
       }
     );
@@ -289,24 +306,41 @@ const Users = () => {
                         {u.is_admin ? 'Administrador' : 'Operador'}
                       </span>
                     </td>
-                    <td style={{ padding: '12px', textAlign: 'right' }}>
+                    <td style={{ padding: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>
                       {u.username !== 'admin' && (
-                        <button 
-                          onClick={() => handleDelete(u.id)}
-                          style={{ 
-                            background: 'transparent', 
-                            border: 'none', 
-                            color: '#ef4444', 
-                            cursor: 'pointer',
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'flex-end',
-                            width: '100%'
-                          }}
-                          title="Excluir Operador"
-                        >
-                          <Trash2 size={16} />
-                        </button>
+                        <>
+                          <button 
+                            onClick={() => handleResetPassword(u.id)}
+                            style={{ 
+                              background: 'transparent', 
+                              border: 'none', 
+                              color: 'var(--primary)', 
+                              cursor: 'pointer',
+                              padding: '4px',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                            title="Resetar Senha para 123456"
+                          >
+                            <KeyRound size={16} />
+                          </button>
+                          
+                          <button 
+                            onClick={() => handleDelete(u.id)}
+                            style={{ 
+                              background: 'transparent', 
+                              border: 'none', 
+                              color: '#ef4444', 
+                              cursor: 'pointer',
+                              padding: '4px',
+                              display: 'flex',
+                              alignItems: 'center'
+                            }}
+                            title="Excluir Operador"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </>
                       )}
                     </td>
                   </tr>

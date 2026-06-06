@@ -108,16 +108,22 @@ const DefectLabels = () => {
 
         // 4. Descrição do Defeito (Autocentralizado e com quebra automática)
         doc.setFont('helvetica', 'bold');
-        doc.setFontSize(9);
+        doc.setFontSize(13);
         doc.setTextColor(239, 68, 68); // cor vermelha para defeito
         const cleanDefect = defectText.toUpperCase();
         const linesLeft = doc.splitTextToSize(cleanDefect, 34); // largura de 34mm max
         
-        let startYLeft = 12.5;
-        if (linesLeft.length > 2) doc.setFontSize(7.5); // reduz tamanho para não estourar
+        let startYLeft = 13.5;
+        if (linesLeft.length === 2) {
+          doc.setFontSize(11);
+          startYLeft = 13;
+        } else if (linesLeft.length > 2) {
+          doc.setFontSize(8.5);
+          startYLeft = 11.5;
+        }
 
         linesLeft.forEach((line, index) => {
-          doc.text(line, 20.5, startYLeft + (index * 3.8), { align: 'center' });
+          doc.text(line, 20.5, startYLeft + (index * 4.5), { align: 'center' });
         });
 
         // --- ETIQUETA 2 (DIREITA - Centro em X = 61.5) ---
@@ -147,15 +153,21 @@ const DefectLabels = () => {
 
           // 4. Descrição do Defeito
           doc.setFont('helvetica', 'bold');
-          doc.setFontSize(9);
+          doc.setFontSize(13);
           doc.setTextColor(239, 68, 68); // cor vermelha para defeito
           
-          let startYRight = 12.5;
+          let startYRight = 13.5;
           const linesRight = doc.splitTextToSize(cleanDefect, 34);
-          if (linesRight.length > 2) doc.setFontSize(7.5);
+          if (linesRight.length === 2) {
+            doc.setFontSize(11);
+            startYRight = 13;
+          } else if (linesRight.length > 2) {
+            doc.setFontSize(8.5);
+            startYRight = 11.5;
+          }
 
           linesRight.forEach((line, index) => {
-            doc.text(line, 61.5, startYRight + (index * 3.8), { align: 'center' });
+            doc.text(line, 61.5, startYRight + (index * 4.5), { align: 'center' });
           });
         }
       }
@@ -194,30 +206,26 @@ const DefectLabels = () => {
       // 2. Loja
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(4.5);
-      doc.setTextColor(80, 80, 80);
-      doc.text(storeName.toUpperCase().substring(0, 32), 14, 5);
+      doc.setTextColor(0, 0, 0);
+      let shortStoreName = storeName.toUpperCase();
+      shortStoreName = shortStoreName.replace("PRAIA GRANDE", "PG").replace("SÃO VICENTE", "SV");
+      doc.text(shortStoreName, 14, 5);
 
       // 3. Título Conferência
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
+      doc.setFontSize(7.5);
       doc.setTextColor(0, 0, 0);
-      doc.text("CONFERÊNCIA DE TAMANHO", 20.5, 10, { align: 'center' });
+      doc.text("TERMO DE CONFERÊNCIA", 20.5, 10.5, { align: 'center' });
 
-      // 4. Detalhes tamanho
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
-      doc.setTextColor(100, 100, 100);
-      doc.text("Padrão: 82mm x 25mm [Dupla]", 20.5, 13.5, { align: 'center' });
-
-      // 5. Linha de Assinatura
-      doc.setDrawColor(120, 120, 120);
+      // 4. Linha de Assinatura
+      doc.setDrawColor(0, 0, 0);
       doc.setLineWidth(0.25);
-      doc.line(6, 20, 35, 20);
+      doc.line(6, 17.5, 35, 17.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4);
-      doc.setTextColor(120, 120, 120);
-      doc.text("ASSINATURA DO CONFERENTE", 20.5, 23, { align: 'center' });
+      doc.setFontSize(4.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("ASSINATURA DO CONFERENTE", 20.5, 21.5, { align: 'center' });
 
       // --- ETIQUETA 2 (DIREITA - Centro em X = 61.5) ---
       // 1. Logo da loja
@@ -231,28 +239,22 @@ const DefectLabels = () => {
       // 2. Loja
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(4.5);
-      doc.setTextColor(80, 80, 80);
-      doc.text(storeName.toUpperCase().substring(0, 32), 55, 5);
+      doc.setTextColor(0, 0, 0);
+      doc.text(shortStoreName, 55, 5);
 
       // 3. Título Conferência
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(7);
+      doc.setFontSize(7.5);
       doc.setTextColor(0, 0, 0);
-      doc.text("CONFERÊNCIA DE TAMANHO", 61.5, 10, { align: 'center' });
+      doc.text("TERMO DE CONFERÊNCIA", 61.5, 10.5, { align: 'center' });
 
-      // 4. Detalhes tamanho
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(5.5);
-      doc.setTextColor(100, 100, 100);
-      doc.text("Padrão: 82mm x 25mm [Dupla]", 61.5, 13.5, { align: 'center' });
-
-      // 5. Linha de Assinatura
-      doc.line(47, 20, 76, 20);
+      // 4. Linha de Assinatura
+      doc.line(47, 17.5, 76, 17.5);
 
       doc.setFont('helvetica', 'bold');
-      doc.setFontSize(4);
-      doc.setTextColor(120, 120, 120);
-      doc.text("ASSINATURA DO CONFERENTE", 61.5, 23, { align: 'center' });
+      doc.setFontSize(4.5);
+      doc.setTextColor(0, 0, 0);
+      doc.text("ASSINATURA DO CONFERENTE", 61.5, 21.5, { align: 'center' });
 
       doc.output('dataurlnewwindow');
       toast.dismiss(loadToast);

@@ -12,6 +12,42 @@ const JWT_SECRET = process.env.JWT_SECRET || 'armazem-secret-key-123';
 app.use(cors());
 app.use(express.json());
 
+// Cabeçalhos de Segurança (Contra Clickjacking, XSS, MIME Sniffing)
+app.use((req, res, next) => {
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+  // Content Security Policy básico
+  res.setHeader('Content-Security-Policy', "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://wa.me;");
+  next();
+});
+
+// Rate Limiting Customizado em Memória (Proteção contra DDoS/Brute Force)
+const rateLimit = {};
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
+const MAX_REQUESTS = 300; // Limite de 300 requisições por IP a cada 15 min
+
+app.use((req, res, next) => {
+  const ip = req.ip || req.connection.remoteAddress || 'unknown';
+  const now = Date.now();
+  
+  if (!rateLimit[ip]) {
+    rateLimit[ip] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+  } else {
+    if (now > rateLimit[ip].resetTime) {
+      rateLimit[ip] = { count: 1, resetTime: now + RATE_LIMIT_WINDOW_MS };
+    } else {
+      rateLimit[ip].count++;
+      if (rateLimit[ip].count > MAX_REQUESTS) {
+        console.warn(`[SECURITY] Rate limit excedido para o IP: ${ip}`);
+        return res.status(429).json({ error: 'Muitas requisições do seu IP. Tente novamente mais tarde.' });
+      }
+    }
+  }
+  next();
+});
+
 // Database setup
 const dbPath = path.join(__dirname, 'armazem.sqlite');
 let db;

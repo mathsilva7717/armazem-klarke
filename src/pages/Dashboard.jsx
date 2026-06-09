@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Printer, Search, Users, LogOut, Box, ArrowRight, FileText, AlertTriangle, Terminal, Headset, MessageSquare, Mail, Globe } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -286,13 +286,13 @@ const Dashboard = () => {
 
               <div style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: '16px', margin: '16px 0' }}>
                 <a 
-                  href="https://wa.me/5513989330765?text=Olá,%20preciso%20de%20suporte%20no%20sistema%20de%20Armazém."
+                  href="https://wa.me/5511989330765?text=Olá,%20preciso%20de%20suporte%20no%20sistema%20de%20Armazém."
                   target="_blank"
                   rel="noopener noreferrer"
                   className="btn-primary"
                   style={{ textDecoration: 'none', width: '100%', display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '10px' }}
                 >
-                  <MessageSquare size={18} /> WhatsApp: (13) 98933-0765
+                  <MessageSquare size={18} /> WhatsApp: (11) 98933-0765
                 </a>
 
                 <a 

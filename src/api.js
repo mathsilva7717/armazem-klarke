@@ -13,4 +13,18 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
+// Interceptor to handle expired tokens (401 response)
+api.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      localStorage.removeItem('armazem_auth');
+      localStorage.removeItem('armazem_token');
+      localStorage.removeItem('armazem_user');
+      window.location.href = '/login?inactive=true';
+    }
+    return Promise.reject(error);
+  }
+);
+
 export default api;

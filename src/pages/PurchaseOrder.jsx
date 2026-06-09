@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, FileText, ShoppingBag, Hash, Tag, Package, User, LogOut, Download } from 'lucide-react';
+import { ArrowLeft, Plus, Trash2, FileText, ShoppingBag, Hash, Tag, Package, LogOut, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import api from '../api';
@@ -105,67 +105,7 @@ const PurchaseOrder = () => {
       // Cores do Tema Industrial (Klarke Amber / Slate)
       const colorAmber = [245, 158, 11]; // #f59e0b
       const colorDark = [38, 38, 38]; // #262626
-      const colorLight = [240, 240, 240];
 
-      // Top Border
-      doc.setFillColor(colorAmber[0], colorAmber[1], colorAmber[2]);
-      doc.rect(0, 0, 210, 5, 'F');
-
-      // 3. Logo e Cabeçalho
-      let textXOffset = 20;
-      if (logoBase64) {
-        doc.addImage(logoBase64, 'PNG', 20, 15, 35, 18);
-        textXOffset = 62;
-      } else {
-        // Fallback visualmente limpo caso não encontre loja.png
-        doc.setDrawColor(colorAmber[0], colorAmber[1], colorAmber[2]);
-        doc.setLineWidth(0.8);
-        doc.rect(20, 15, 35, 18);
-        doc.setFont('helvetica', 'bold');
-        doc.setFontSize(8);
-        doc.setTextColor(colorAmber[0], colorAmber[1], colorAmber[2]);
-        doc.text("KLA LOGÍSTICA", 37.5, 25, { align: 'center' });
-        textXOffset = 62;
-      }
-
-      // Nome da Loja ao lado do Logo
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(14);
-      doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
-      doc.text(storeName.toUpperCase(), textXOffset, 22);
-
-      // Título do Documento
-      doc.setFont('helvetica', 'normal');
-      doc.setFontSize(9);
-      doc.setTextColor(120, 120, 120);
-      doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
-
-      // Linha Divisória do Topo
-      doc.setDrawColor(220, 220, 220);
-      doc.setLineWidth(0.2);
-      doc.line(20, 38, 190, 38);
-
-      // 4. Seção de Informações / Metadados (Cards organizados)
-      doc.setFillColor(250, 250, 250);
-      doc.rect(20, 42, 170, 20, 'F');
-      doc.setDrawColor(230, 230, 230);
-      doc.rect(20, 42, 170, 20);
-
-      // Info esquerda
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(80, 80, 80);
-      doc.text("Responsável Emissor:", 25, 49);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
-      doc.text(user.name || user.username || 'Administrador', 25, 54);
-
-      // Info direita
-      doc.setFont('helvetica', 'bold');
-      doc.setTextColor(80, 80, 80);
-      doc.text("Data de Emissão:", 120, 49);
-      doc.setFont('helvetica', 'normal');
-      doc.setTextColor(0, 0, 0);
       const currentDate = new Date().toLocaleDateString('pt-BR', {
         day: '2-digit',
         month: '2-digit',
@@ -173,22 +113,102 @@ const PurchaseOrder = () => {
         hour: '2-digit',
         minute: '2-digit'
       });
-      doc.text(currentDate, 120, 54);
 
-      // 5. Tabela de Itens
-      let currentY = 74;
+      // Função para desenhar o cabeçalho da página
+      const drawHeader = (pageNumber) => {
+        // Top Border
+        doc.setFillColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+        doc.rect(0, 0, 210, 5, 'F');
 
-      // Header da Tabela
-      doc.setFillColor(colorDark[0], colorDark[1], colorDark[2]);
-      doc.rect(20, currentY, 170, 8, 'F');
+        if (pageNumber === 1) {
+          // Logo e Cabeçalho
+          let textXOffset = 20;
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', 20, 15, 35, 18);
+            textXOffset = 62;
+          } else {
+            // Fallback visualmente limpo caso não encontre loja.png
+            doc.setDrawColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+            doc.setLineWidth(0.8);
+            doc.rect(20, 15, 35, 18);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+            doc.text("KLA LOGÍSTICA", 37.5, 25, { align: 'center' });
+            textXOffset = 62;
+          }
 
-      doc.setFont('helvetica', 'bold');
-      doc.setFontSize(9);
-      doc.setTextColor(255, 255, 255);
-      doc.text("SKU", 25, currentY + 5.5);
-      doc.text("NOME DO PRODUTO", 65, currentY + 5.5);
-      doc.text("QUANTIDADE", 165, currentY + 5.5);
+          // Nome da Loja ao lado do Logo
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+          doc.text(storeName.toUpperCase(), textXOffset, 22);
 
+          // Título do Documento
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(120, 120, 120);
+          doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
+
+          // Linha Divisória do Topo
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.2);
+          doc.line(20, 38, 190, 38);
+
+          // Seção de Informações / Metadados (Cards organizados)
+          doc.setFillColor(250, 250, 250);
+          doc.rect(20, 42, 170, 20, 'F');
+          doc.setDrawColor(230, 230, 230);
+          doc.rect(20, 42, 170, 20);
+
+          // Info esquerda
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 80);
+          doc.text("Responsável Emissor:", 25, 49);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.text(user.name || user.username || 'Administrador', 25, 54);
+
+          // Info direita
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Data de Emissão:", 120, 49);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.text(currentDate, 120, 54);
+        } else {
+          // Cabeçalho simplificado nas páginas seguintes
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+          doc.text(`SOLICITAÇÃO DE PEDIDO DE COMPRA - ${storeName.toUpperCase()} (Pág. ${pageNumber})`, 20, 15);
+          
+          doc.setDrawColor(220, 220, 220);
+          doc.setLineWidth(0.2);
+          doc.line(20, 18, 190, 18);
+        }
+      };
+
+      // Função para desenhar o cabeçalho da tabela
+      const drawTableHeader = (y) => {
+        doc.setFillColor(colorDark[0], colorDark[1], colorDark[2]);
+        doc.rect(20, y, 170, 8, 'F');
+
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.text("SKU", 25, y + 5.5);
+        doc.text("NOME DO PRODUTO", 65, y + 5.5);
+        doc.text("QUANTIDADE", 165, y + 5.5);
+      };
+
+      let pageNum = 1;
+      let pageTableStartY = 74;
+      let currentY = pageTableStartY;
+
+      drawHeader(pageNum);
+      drawTableHeader(currentY);
       currentY += 8;
 
       // Linhas da Tabela
@@ -196,6 +216,25 @@ const PurchaseOrder = () => {
       doc.setTextColor(0, 0, 0);
 
       items.forEach((item, index) => {
+        // Cada linha tem 9mm. Se estourar o limite da página (240mm), quebra de página.
+        if (currentY + 9 > 240) {
+          // Desenha bordas da tabela na página atual antes de mudar
+          doc.setDrawColor(200, 200, 200);
+          doc.line(20, currentY, 190, currentY); // Linha inferior
+          doc.line(20, pageTableStartY, 20, currentY); // Linha lateral esquerda
+          doc.line(190, pageTableStartY, 190, currentY); // Linha lateral direita
+
+          // Adiciona nova página
+          doc.addPage();
+          pageNum++;
+          drawHeader(pageNum);
+
+          pageTableStartY = 25;
+          currentY = pageTableStartY;
+          drawTableHeader(currentY);
+          currentY += 8;
+        }
+
         // Cor de fundo alternada (efeito zebra)
         if (index % 2 === 1) {
           doc.setFillColor(248, 248, 248);
@@ -208,6 +247,8 @@ const PurchaseOrder = () => {
 
         // Conteúdos
         doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(0, 0, 0);
         doc.text(item.sku, 25, currentY + 6);
 
         doc.setFont('helvetica', 'normal');
@@ -221,12 +262,14 @@ const PurchaseOrder = () => {
         currentY += 9;
       });
 
-      // Borda Externa da Tabela
+      // Desenha bordas finais da tabela no final da listagem
       doc.setDrawColor(200, 200, 200);
-      doc.rect(20, 74, 170, currentY - 74);
+      doc.line(20, currentY, 190, currentY); // Linha inferior
+      doc.line(20, pageTableStartY, 20, currentY); // Linha lateral esquerda
+      doc.line(190, pageTableStartY, 190, currentY); // Linha lateral direita
 
       // 6. Campo de Assinatura
-      const signatureY = 250;
+      const signatureY = Math.max(240, currentY + 15);
       doc.setDrawColor(180, 180, 180);
       doc.setLineWidth(0.4);
       doc.line(60, signatureY, 150, signatureY);

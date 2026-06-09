@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { LogIn, User, Lock, Box } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -9,6 +9,14 @@ const Login = () => {
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('inactive') === 'true') {
+      toast.error('Você foi desconectado por inatividade.');
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   const handleLogin = async (e) => {
     e.preventDefault();

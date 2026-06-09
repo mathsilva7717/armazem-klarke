@@ -328,6 +328,40 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
+// Edit user (name and username)
+app.put('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  const { username, name } = req.body;
+  
+  if (!username || !name) {
+    return res.status(400).json({ error: 'Nome e usuário são obrigatórios.' });
+  }
+
+  // Se for o admin principal (ID 1), impedir a alteração do username para outra coisa
+  if (parseInt(id) === 1 && username !== 'admin') {
+    return res.status(403).json({ error: 'O nome de usuário do administrador principal não pode ser alterado.' });
+  }
+
+  try {
+    // Verificar se o username já está em uso por outro usuário
+    const existingUser = db.prepare("SELECT id FROM users WHERE username = ? AND id != ?").get(username, id);
+    if (existingUser) {
+      return res.status(400).json({ error: 'Este nome de usuário já está em uso.' });
+    }
+
+    const targetUser = db.prepare("SELECT username, name FROM users WHERE id = ?").get(id);
+    if (!targetUser) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+
+    db.prepare("UPDATE users SET username = ?, name = ? WHERE id = ?").run(username, name, id);
+    logAction(req.user.id, req.user.username, 'EDITAR_USUARIO', `Editou o operador ${targetUser.username}: Nome: ${targetUser.name} -> ${name}, Usuário: ${targetUser.username} -> ${username}`);
+    res.json({ message: 'Usuário atualizado com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Reset user password
 app.post('/api/users/:id/reset-password', authenticateToken, requireAdmin, (req, res) => {
   const { id } = req.params;

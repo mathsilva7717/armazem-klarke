@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, Users as UsersIcon, ArrowLeft, Trash2, User, Lock, Tag, LogOut, KeyRound } from 'lucide-react';
+import { UserPlus, Users as UsersIcon, ArrowLeft, Trash2, User, Lock, Tag, LogOut, KeyRound, Pencil } from 'lucide-react';
 import toast from 'react-hot-toast';
 import api from '../api';
 
@@ -8,6 +8,7 @@ const Users = () => {
   const navigate = useNavigate();
   const [users, setUsers] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [editingUserId, setEditingUserId] = useState(null);
   const [formData, setFormData] = useState({
     username: '',
     password: '',
@@ -44,34 +45,59 @@ const Users = () => {
     navigate('/login');
   };
 
-  useEffect(() => {
-    fetchUsers();
-  }, []);
-
   const fetchUsers = async () => {
     try {
       const response = await api.get('/users');
       setUsers(response.data);
-    } catch (error) {
+    } catch (err) {
+      console.error(err);
       toast.error('Erro ao carregar usuários.');
     }
   };
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
   };
 
+  const handleEditClick = (u) => {
+    setEditingUserId(u.id);
+    setFormData({
+      username: u.username,
+      name: u.name,
+      password: '',
+      is_admin: u.is_admin
+    });
+  };
+
+  const handleCancelEdit = () => {
+    setEditingUserId(null);
+    setFormData({ username: '', password: '', name: '', is_admin: false });
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      await api.post('/users', formData);
-      toast.success('Usuário cadastrado com sucesso!');
+      if (editingUserId) {
+        await api.put(`/users/${editingUserId}`, {
+          username: formData.username,
+          name: formData.name
+        });
+        toast.success('Usuário atualizado com sucesso!');
+        setEditingUserId(null);
+      } else {
+        await api.post('/users', formData);
+        toast.success('Usuário cadastrado com sucesso!');
+      }
       setFormData({ username: '', password: '', name: '', is_admin: false });
       fetchUsers();
     } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao cadastrar usuário.');
+      toast.error(error.response?.data?.error || `Erro ao ${editingUserId ? 'atualizar' : 'cadastrar'} usuário.`);
     } finally {
       setLoading(false);
     }
@@ -195,7 +221,8 @@ const Users = () => {
       }}>
         <section className="glass-card animate-fade-in" style={{ padding: '32px', height: 'fit-content' }}>
           <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px' }}>
-            <UserPlus size={20} color="var(--primary)" /> Novo Operador
+            {editingUserId ? <Pencil size={20} color="var(--primary)" /> : <UserPlus size={20} color="var(--primary)" />}
+            {editingUserId ? 'Editar Operador' : 'Novo Operador'}
           </h3>
           
           <form onSubmit={handleSubmit}>
@@ -220,38 +247,72 @@ const Users = () => {
                 value={formData.username}
                 onChange={handleInputChange}
                 required
+                disabled={editingUserId && formData.username === 'admin'}
               />
             </div>
 
-            <div className="input-group">
-              <label><Lock size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Senha Inicial</label>
-              <input 
-                name="password"
-                type="password" 
-                placeholder="••••••••" 
-                value={formData.password}
-                onChange={handleInputChange}
-                required
-              />
-            </div>
+            {!editingUserId && (
+              <div className="input-group">
+                <label><Lock size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Senha Inicial</label>
+                <input 
+                  name="password"
+                  type="password" 
+                  placeholder="••••••••" 
+                  value={formData.password}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+            )}
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0 24px' }}>
-              <input 
-                name="is_admin"
-                type="checkbox" 
-                id="is_admin"
-                checked={formData.is_admin}
-                onChange={(e) => setFormData(prev => ({ ...prev, is_admin: e.target.checked }))}
-                style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-              />
-              <label htmlFor="is_admin" style={{ cursor: 'pointer', userSelect: 'none', margin: 0, fontWeight: '600', fontSize: '0.85rem', display: 'inline-block', color: 'var(--text-main)' }}>
-                Tornar este usuário Administrador
-              </label>
-            </div>
+            {!editingUserId && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0 24px' }}>
+                <input 
+                  name="is_admin"
+                  type="checkbox" 
+                  id="is_admin"
+                  checked={formData.is_admin}
+                  onChange={(e) => setFormData(prev => ({ ...prev, is_admin: e.target.checked }))}
+                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
+                />
+                <label htmlFor="is_admin" style={{ cursor: 'pointer', userSelect: 'none', margin: 0, fontWeight: '600', fontSize: '0.85rem', display: 'inline-block', color: 'var(--text-main)' }}>
+                  Tornar este usuário Administrador
+                </label>
+              </div>
+            )}
 
-            <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
-              {loading ? 'Cadastrando...' : <><UserPlus size={18} /> Cadastrar Operador</>}
-            </button>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginTop: editingUserId ? '24px' : '0' }}>
+              <button type="submit" className="btn-primary" style={{ width: '100%' }} disabled={loading}>
+                {loading ? (editingUserId ? 'Salvando...' : 'Cadastrando...') : (
+                  editingUserId ? <><Pencil size={18} /> Salvar Alterações</> : <><UserPlus size={18} /> Cadastrar Operador</>
+                )}
+              </button>
+
+              {editingUserId && (
+                <button 
+                  type="button" 
+                  onClick={handleCancelEdit}
+                  style={{
+                    width: '100%',
+                    background: 'transparent',
+                    color: 'var(--text-muted)',
+                    border: '1px solid var(--border)',
+                    padding: '12px',
+                    fontWeight: '700',
+                    textTransform: 'uppercase',
+                    cursor: 'pointer',
+                    fontSize: '0.85rem',
+                    letterSpacing: '1px',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '8px'
+                  }}
+                >
+                  Cancelar
+                </button>
+              )}
+            </div>
           </form>
         </section>
 
@@ -307,6 +368,22 @@ const Users = () => {
                       </span>
                     </td>
                     <td style={{ padding: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>
+                      <button 
+                        onClick={() => handleEditClick(u)}
+                        style={{ 
+                          background: 'transparent', 
+                          border: 'none', 
+                          color: 'var(--primary)', 
+                          cursor: 'pointer',
+                          padding: '4px',
+                          display: 'flex',
+                          alignItems: 'center'
+                        }}
+                        title="Editar Operador"
+                      >
+                        <Pencil size={16} />
+                      </button>
+
                       {u.username !== 'admin' && (
                         <>
                           <button 

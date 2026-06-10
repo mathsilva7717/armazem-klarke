@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut, Trash2, Upload, FileText } from 'lucide-react';
+import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut, Trash2, Upload, FileText, Info } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import api from '../api';
@@ -849,6 +849,26 @@ const Deliveries = () => {
                               <Trash2 size={12} /> Excluir
                             </button>
                           )}
+
+                          <button
+                            onClick={() => setSelectedOrder(order)}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid var(--border)',
+                              color: 'var(--primary)',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              textTransform: 'uppercase'
+                            }}
+                            title="Ver Detalhes do Pedido"
+                          >
+                            <Info size={12} /> Info
+                          </button>
                         </div>
                       </td>
                     </tr>

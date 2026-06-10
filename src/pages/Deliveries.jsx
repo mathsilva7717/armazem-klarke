@@ -12,6 +12,7 @@ const Deliveries = () => {
   const [loading, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
+  const [selectedOrder, setSelectedOrder] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
 
@@ -481,17 +482,37 @@ const Deliveries = () => {
                       <td data-label="Loja Destinatária" style={{ padding: '12px', fontWeight: '600' }}>{order.store_name}</td>
                       <td data-label="Emissor" style={{ padding: '12px' }}>{order.emitter_name || 'Sistema'}</td>
                       <td data-label="Produtos" style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                          {order.items?.map(it => (
-                            <span key={it.id} style={{ fontSize: '0.8rem' }}>
-                              • <strong>{it.sku}</strong> - {it.name.toUpperCase()} (x{it.quantity})
-                            </span>
-                          ))}
-                        </div>
+                        <button
+                          onClick={() => setSelectedOrder(order)}
+                          style={{
+                            background: 'rgba(245, 158, 11, 0.1)',
+                            border: '1px solid rgba(245, 158, 11, 0.3)',
+                            color: 'var(--primary)',
+                            padding: '6px 12px',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            borderRadius: '4px',
+                            transition: 'all 0.2s ease'
+                          }}
+                          onMouseEnter={(e) => {
+                            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.2)';
+                            e.currentTarget.style.borderColor = 'var(--primary)';
+                          }}
+                          onMouseLeave={(e) => {
+                            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
+                            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
+                          }}
+                        >
+                          <Package size={14} /> {order.items?.length || 0} {order.items?.length === 1 ? 'Item' : 'Itens'}
+                        </button>
                       </td>
                       <td data-label="Status" style={{ padding: '12px' }}>{getStatusBadge(order.status)}</td>
-                      <td data-label="Ações" style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                      <td data-label="Ações" style={{ padding: '12px', whiteSpace: 'nowrap', width: '220px' }}>
+                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                           <button
                             onClick={() => handleDownloadPDF(order)}
                             style={{
@@ -595,6 +616,126 @@ const Deliveries = () => {
           </div>
         </section>
       </main>
+
+      {/* Modal de Detalhes dos Produtos */}
+      {selectedOrder && (
+        <div style={{
+          position: 'fixed',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 1000,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            width: '100%',
+            maxWidth: '650px',
+            maxHeight: '85vh',
+            display: 'flex',
+            flexDirection: 'column',
+            padding: '28px',
+            border: '1px solid var(--border)',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)',
+            background: '#121212',
+            borderRadius: '0px'
+          }}>
+            {/* Modal Header */}
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginBottom: '20px', 
+              borderBottom: '2px solid var(--primary)', 
+              paddingBottom: '12px' 
+            }}>
+              <h3 style={{ textTransform: 'uppercase', fontSize: '1.05rem', fontWeight: '900', letterSpacing: '1px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <Package size={18} color="var(--primary)" /> Produtos do Pedido #{selectedOrder.id}
+              </h3>
+              <button 
+                onClick={() => setSelectedOrder(null)} 
+                style={{ 
+                  background: 'transparent', 
+                  border: 'none', 
+                  color: 'var(--text-muted)', 
+                  fontSize: '1.5rem', 
+                  cursor: 'pointer', 
+                  lineHeight: 1,
+                  transition: 'color 0.2s',
+                }}
+                onMouseEnter={(e) => e.target.style.color = '#fff'}
+                onMouseLeave={(e) => e.target.style.color = 'var(--text-muted)'}
+              >
+                &times;
+              </button>
+            </div>
+            {/* Modal Body */}
+            <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', marginBottom: '20px' }}>
+              <div style={{ 
+                display: 'flex', 
+                justifyContent: 'space-between', 
+                marginBottom: '20px', 
+                fontSize: '0.85rem', 
+                background: 'rgba(255,255,255,0.03)',
+                padding: '12px',
+                border: '1px solid var(--border)'
+              }}>
+                <span>Loja: <strong style={{ color: 'var(--primary)' }}>{selectedOrder.store_name}</strong></span>
+                <span>Total de Itens: <strong style={{ color: 'var(--primary)' }}>{selectedOrder.items?.reduce((sum, item) => sum + item.quantity, 0)}</strong></span>
+              </div>
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+                <thead>
+                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
+                    <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '25%' }}>SKU</th>
+                    <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '55%' }}>Nome do Produto</th>
+                    <th style={{ padding: '10px 8px', color: 'var(--text-muted)', textAlign: 'right', width: '20%' }}>Qtd</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {selectedOrder.items?.map((it, idx) => (
+                    <tr key={it.id} style={{ 
+                      borderBottom: '1px solid rgba(255,255,255,0.05)',
+                      background: idx % 2 === 1 ? 'rgba(255,255,255,0.01)' : 'transparent'
+                    }}>
+                      <td style={{ padding: '10px 8px', fontWeight: 'bold', color: 'var(--primary)' }}>{it.sku}</td>
+                      <td style={{ padding: '10px 8px', textTransform: 'uppercase' }}>{it.name}</td>
+                      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 'bold' }}>{it.quantity}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+            {/* Modal Footer */}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', borderTop: '1px solid var(--border)', paddingTop: '16px' }}>
+              <button 
+                onClick={() => setSelectedOrder(null)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: '#fff',
+                  padding: '8px 20px',
+                  cursor: 'pointer',
+                  fontWeight: 'bold',
+                  fontSize: '0.85rem',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#fff';
+                  e.target.style.color = '#000';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'transparent';
+                  e.target.style.color = '#fff';
+                }}
+              >
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

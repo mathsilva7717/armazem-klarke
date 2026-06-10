@@ -496,7 +496,7 @@ const PurchaseOrder = () => {
             onClick={handleGeneratePDF}
             className="btn-primary" 
             style={{ width: '100%', marginTop: 'auto' }}
-            disabled={items.length === 0 || !storeName}
+            disabled={items.length === 0}
           >
             <Download size={18} /> Gerar PDF do Pedido
           </button>

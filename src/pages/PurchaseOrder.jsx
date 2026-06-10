@@ -278,6 +278,8 @@ const PurchaseOrder = () => {
           currentY = pageTableStartY;
           drawTableHeader(currentY);
           currentY += 8;
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
         }
 
         // Cor de fundo alternada (efeito zebra)

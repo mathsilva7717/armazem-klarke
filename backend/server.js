@@ -250,7 +250,7 @@ app.post('/api/login', (req, res) => {
     const validPassword = bcrypt.compareSync(password, user.password);
     if (!validPassword) return res.status(401).json({ error: 'Senha incorreta' });
 
-    const token = jwt.sign({ id: user.id, username: user.username, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: '8h' });
+    const token = jwt.sign({ id: user.id, username: user.username, role: user.role, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: '8h' });
     const mustChange = !!user.must_change_password;
     console.log(`Usuário ${username} logado. Precisa trocar senha? ${mustChange}`);
     
@@ -263,7 +263,8 @@ app.post('/api/login', (req, res) => {
         username: user.username, 
         name: user.name,
         mustChangePassword: !!user.must_change_password,
-        isAdmin: !!user.is_admin
+        isAdmin: !!user.is_admin,
+        role: user.role
       } 
     });
   } catch (err) {
@@ -324,14 +325,16 @@ app.post('/api/exits', authenticateToken, (req, res) => {
 
 // Create User (Only for management)
 app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
-  const { username, password, name, is_admin } = req.body;
+  const { username, password, name, role } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
-  const isAdminVal = is_admin ? 1 : 0;
+  const validRoles = ['admin', 'operator', 'expedicao'];
+  const userRole = validRoles.includes(role) ? role : 'operator';
+  const isAdminVal = userRole === 'admin' ? 1 : 0;
   
   try {
-    const info = db.prepare("INSERT INTO users (username, password, name, is_admin) VALUES (?, ?, ?, ?)").run(username, hashedPassword, name, isAdminVal);
-    logAction(req.user.id, req.user.username, 'CADASTRAR_USUARIO', `Cadastrou operador: ${username} | Nome: ${name} | Cargo: ${isAdminVal ? 'Administrador' : 'Operador'}`);
-    res.status(201).json({ id: info.lastInsertRowid, username, name, is_admin: isAdminVal });
+    const info = db.prepare("INSERT INTO users (username, password, name, is_admin, role) VALUES (?, ?, ?, ?, ?)").run(username, hashedPassword, name, isAdminVal, userRole);
+    logAction(req.user.id, req.user.username, 'CADASTRAR_USUARIO', `Cadastrou operador: ${username} | Nome: ${name} | Cargo: ${userRole}`);
+    res.status(201).json({ id: info.lastInsertRowid, username, name, is_admin: isAdminVal, role: userRole });
   } catch (err) {
     res.status(500).json({ error: 'Usuário já existe' });
   }
@@ -342,7 +345,7 @@ app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
 // Get all users
 app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
   try {
-    const rows = db.prepare("SELECT id, username, name, is_admin, created_at FROM users").all();
+    const rows = db.prepare("SELECT id, username, name, is_admin, role, created_at FROM users").all();
     res.json(rows);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -370,25 +373,30 @@ app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
-// Toggle user role
+// Toggle/Update user role
 app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
   const { id } = req.params;
-  const { is_admin } = req.body;
+  const { role } = req.body;
   
   // Impedir alteração do admin principal (ID 1)
   if (parseInt(id) === 1) {
     return res.status(403).json({ error: 'O cargo do administrador principal não pode ser alterado.' });
   }
 
-  const isAdminVal = is_admin ? 1 : 0;
+  const validRoles = ['admin', 'operator', 'expedicao'];
+  if (!validRoles.includes(role)) {
+    return res.status(400).json({ error: 'Cargo inválido.' });
+  }
+
+  const isAdminVal = role === 'admin' ? 1 : 0;
 
   try {
     const targetUser = db.prepare("SELECT username FROM users WHERE id = ?").get(id);
     const targetUsername = targetUser ? targetUser.username : id;
 
-    db.prepare("UPDATE users SET is_admin = ? WHERE id = ?").run(isAdminVal, id);
-    logAction(req.user.id, req.user.username, 'ALTERAR_CARGO', `Alterou o cargo de ${targetUsername} para: ${isAdminVal ? 'Administrador' : 'Operador'}`);
-    res.json({ message: 'Cargo atualizado com sucesso!', is_admin: isAdminVal });
+    db.prepare("UPDATE users SET is_admin = ?, role = ? WHERE id = ?").run(isAdminVal, role, id);
+    logAction(req.user.id, req.user.username, 'ALTERAR_CARGO', `Alterou o cargo de ${targetUsername} para: ${role}`);
+    res.json({ message: 'Cargo atualizado com sucesso!', is_admin: isAdminVal, role });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

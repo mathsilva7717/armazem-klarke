@@ -15,6 +15,7 @@ const Deliveries = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
+  const canManageDeliveries = user.role === 'admin' || user.role === 'expedicao' || user.isAdmin === true;
 
   const handleLogout = () => {
     localStorage.removeItem('armazem_auth');
@@ -557,7 +558,7 @@ const Deliveries = () => {
                             <Download size={12} /> PDF
                           </button>
 
-                          {order.status === 'PENDENTE' && (
+                          {order.status === 'PENDENTE' && canManageDeliveries && (
                             <button
                               onClick={() => handleUpdateStatus(order.id, 'PREPARANDO')}
                               style={{
@@ -575,7 +576,7 @@ const Deliveries = () => {
                             </button>
                           )}
 
-                          {order.status === 'PREPARANDO' && (
+                          {order.status === 'PREPARANDO' && canManageDeliveries && (
                             <button
                               onClick={() => handleUpdateStatus(order.id, 'EM_ROTA')}
                               style={{
@@ -596,7 +597,7 @@ const Deliveries = () => {
                             </button>
                           )}
 
-                          {order.status === 'EM_ROTA' && (
+                          {order.status === 'EM_ROTA' && canManageDeliveries && (
                             <>
                               <button
                                 onClick={() => handleUpdateStatus(order.id, 'FINALIZADO')}

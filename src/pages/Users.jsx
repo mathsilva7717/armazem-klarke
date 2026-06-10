@@ -13,7 +13,7 @@ const Users = () => {
     username: '',
     password: '',
     name: '',
-    is_admin: false
+    role: 'operator'
   });
 
   const [confirmConfig, setConfirmConfig] = useState({
@@ -70,13 +70,13 @@ const Users = () => {
       username: u.username,
       name: u.name,
       password: '',
-      is_admin: u.is_admin
+      role: u.role || 'operator'
     });
   };
 
   const handleCancelEdit = () => {
     setEditingUserId(null);
-    setFormData({ username: '', password: '', name: '', is_admin: false });
+    setFormData({ username: '', password: '', name: '', role: 'operator' });
   };
 
   const handleSubmit = async (e) => {
@@ -94,7 +94,7 @@ const Users = () => {
         await api.post('/users', formData);
         toast.success('Usuário cadastrado com sucesso!');
       }
-      setFormData({ username: '', password: '', name: '', is_admin: false });
+      setFormData({ username: '', password: '', name: '', role: 'operator' });
       fetchUsers();
     } catch (error) {
       toast.error(error.response?.data?.error || `Erro ao ${editingUserId ? 'atualizar' : 'cadastrar'} usuário.`);
@@ -137,25 +137,30 @@ const Users = () => {
     );
   };
 
-  const handleToggleRole = (id, currentIsAdmin) => {
+  const handleCycleRole = (id, currentRole) => {
     const targetUser = users.find(u => u.id === id);
     if (targetUser && targetUser.username === 'admin') {
       toast.error('O cargo do administrador principal não pode ser alterado.');
       return;
     }
 
-    const newIsAdmin = !currentIsAdmin;
-    const confirmTitle = newIsAdmin ? 'Promover Operador' : 'Alterar Cargo';
-    const confirmMsg = newIsAdmin 
-      ? `Deseja promover o usuário "${targetUser?.name || targetUser?.username}" para Administrador?` 
-      : `Deseja alterar o cargo de "${targetUser?.name || targetUser?.username}" para Operador?`;
+    let newRole = 'operator';
+    if (currentRole === 'operator') newRole = 'expedicao';
+    else if (currentRole === 'expedicao') newRole = 'admin';
+    else if (currentRole === 'admin') newRole = 'operator';
+
+    const roleNames = {
+      operator: 'Operador',
+      expedicao: 'Expedição',
+      admin: 'Administrador'
+    };
 
     showConfirm(
-      confirmTitle,
-      confirmMsg,
+      'Alterar Cargo',
+      `Deseja alterar o cargo de "${targetUser?.name || targetUser?.username}" para "${roleNames[newRole]}"?`,
       async () => {
         try {
-          await api.put(`/users/${id}/role`, { is_admin: newIsAdmin });
+          await api.put(`/users/${id}/role`, { role: newRole });
           toast.success('Cargo atualizado com sucesso!');
           fetchUsers();
         } catch (error) {
@@ -266,18 +271,26 @@ const Users = () => {
             )}
 
             {!editingUserId && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', margin: '16px 0 24px' }}>
-                <input 
-                  name="is_admin"
-                  type="checkbox" 
-                  id="is_admin"
-                  checked={formData.is_admin}
-                  onChange={(e) => setFormData(prev => ({ ...prev, is_admin: e.target.checked }))}
-                  style={{ width: '18px', height: '18px', cursor: 'pointer', accentColor: 'var(--primary)' }}
-                />
-                <label htmlFor="is_admin" style={{ cursor: 'pointer', userSelect: 'none', margin: 0, fontWeight: '600', fontSize: '0.85rem', display: 'inline-block', color: 'var(--text-main)' }}>
-                  Tornar este usuário Administrador
-                </label>
+              <div className="input-group" style={{ margin: '16px 0 24px' }}>
+                <label><User size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Cargo</label>
+                <select
+                  name="role"
+                  value={formData.role}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px',
+                    background: '#000',
+                    border: '1px solid var(--border)',
+                    color: '#fff',
+                    outline: 'none',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="operator">Operador (Padrão)</option>
+                  <option value="expedicao">Expedição (Visualização + Aceitar Pedidos)</option>
+                  <option value="admin">Administrador (Controle Total)</option>
+                </select>
               </div>
             )}
 
@@ -338,16 +351,28 @@ const Users = () => {
                     <td data-label="Usuário" style={{ padding: '12px' }}>{u.username}</td>
                     <td data-label="Cargo" style={{ padding: '12px' }}>
                       <span 
-                        onClick={() => u.username !== 'admin' && handleToggleRole(u.id, u.is_admin)}
+                        onClick={() => u.username !== 'admin' && handleCycleRole(u.id, u.role || (u.is_admin ? 'admin' : 'operator'))}
                         title={u.username === 'admin' ? '' : 'Clique para alterar o cargo deste usuário'}
                         style={{ 
                           fontSize: '0.75rem', 
                           padding: '4px 8px', 
                           fontWeight: '700', 
                           textTransform: 'uppercase',
-                          background: u.is_admin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)',
-                          color: u.is_admin ? 'var(--primary)' : 'var(--text-muted)',
-                          border: u.is_admin ? '1px solid var(--primary)' : '1px solid var(--border)',
+                          background: (u.role === 'admin' || (!u.role && u.is_admin))
+                            ? 'rgba(245, 158, 11, 0.15)'
+                            : (u.role === 'expedicao')
+                              ? 'rgba(59, 130, 246, 0.15)'
+                              : 'rgba(255, 255, 255, 0.05)',
+                          color: (u.role === 'admin' || (!u.role && u.is_admin))
+                            ? 'var(--primary)'
+                            : (u.role === 'expedicao')
+                              ? '#3b82f6'
+                              : 'var(--text-muted)',
+                          border: (u.role === 'admin' || (!u.role && u.is_admin))
+                            ? '1px solid var(--primary)'
+                            : (u.role === 'expedicao')
+                              ? '1px solid #3b82f6'
+                              : '1px solid var(--border)',
                           cursor: u.username === 'admin' ? 'default' : 'pointer',
                           userSelect: 'none',
                           transition: 'all 0.2s ease',
@@ -355,16 +380,26 @@ const Users = () => {
                         }}
                         onMouseEnter={(e) => {
                           if (u.username !== 'admin') {
-                            e.currentTarget.style.background = u.is_admin ? 'rgba(245, 158, 11, 0.3)' : 'rgba(255, 255, 255, 0.15)';
+                            const r = u.role || (u.is_admin ? 'admin' : 'operator');
+                            e.currentTarget.style.background = r === 'admin'
+                              ? 'rgba(245, 158, 11, 0.3)'
+                              : r === 'expedicao'
+                                ? 'rgba(59, 130, 246, 0.3)'
+                                : 'rgba(255, 255, 255, 0.15)';
                           }
                         }}
                         onMouseLeave={(e) => {
                           if (u.username !== 'admin') {
-                            e.currentTarget.style.background = u.is_admin ? 'rgba(245, 158, 11, 0.15)' : 'rgba(255, 255, 255, 0.05)';
+                            const r = u.role || (u.is_admin ? 'admin' : 'operator');
+                            e.currentTarget.style.background = r === 'admin'
+                              ? 'rgba(245, 158, 11, 0.15)'
+                              : r === 'expedicao'
+                                ? 'rgba(59, 130, 246, 0.15)'
+                                : 'rgba(255, 255, 255, 0.05)';
                           }
                         }}
                       >
-                        {u.is_admin ? 'Administrador' : 'Operador'}
+                        {(u.role === 'admin' || (!u.role && u.is_admin)) ? 'Administrador' : (u.role === 'expedicao') ? 'Expedição' : 'Operador'}
                       </span>
                     </td>
                     <td style={{ padding: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>

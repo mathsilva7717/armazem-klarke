@@ -146,8 +146,18 @@ function initDb() {
       status TEXT DEFAULT 'PENDENTE',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-      FOREIGN KEY(emitted_by) REFERENCES users(id)
+      accepted_by INTEGER,
+      FOREIGN KEY(emitted_by) REFERENCES users(id),
+      FOREIGN KEY(accepted_by) REFERENCES users(id)
     )`);
+
+    // Migração: Adicionar accepted_by caso não exista
+    try {
+      db.prepare("ALTER TABLE purchase_orders ADD COLUMN accepted_by INTEGER").run();
+      console.log('Coluna accepted_by adicionada à tabela purchase_orders.');
+    } catch (e) {
+      // Já existe
+    }
 
     // Order items table
     db.exec(`CREATE TABLE IF NOT EXISTS order_items (
@@ -158,6 +168,41 @@ function initDb() {
       quantity INTEGER,
       FOREIGN KEY(order_id) REFERENCES purchase_orders(id)
     )`);
+
+    // Migration: Migrate old 'GERAR_PEDIDO' logs into purchase_orders/order_items
+    try {
+      const existingCount = db.prepare("SELECT COUNT(*) as count FROM purchase_orders").get().count;
+      if (existingCount === 0) {
+        console.log("Iniciando migração de pedidos antigos a partir dos logs de auditoria...");
+        const oldLogs = db.prepare("SELECT * FROM audit_logs WHERE action = 'GERAR_PEDIDO'").all();
+        
+        const insertOrder = db.prepare("INSERT INTO purchase_orders (store_name, emitted_by, status, created_at, updated_at) VALUES (?, ?, 'PENDENTE', ?, ?)");
+        const insertItem = db.prepare("INSERT INTO order_items (order_id, sku, name, quantity) VALUES (?, ?, ?, ?)");
+
+        db.transaction(() => {
+          for (const log of oldLogs) {
+            try {
+              const detailsObj = JSON.parse(log.details);
+              if (detailsObj && detailsObj.storeName && Array.isArray(detailsObj.items)) {
+                const createdAt = log.created_at || new Date().toISOString();
+                const userId = log.user_id || 1;
+                const info = insertOrder.run(detailsObj.storeName, userId, createdAt, createdAt);
+                const newOrderId = info.lastInsertRowid;
+
+                for (const it of detailsObj.items) {
+                  insertItem.run(newOrderId, it.sku || '', it.name || '', it.quantity || 0);
+                }
+              }
+            } catch (innerErr) {
+              console.error(`Erro ao processar log #${log.id} na migração:`, innerErr.message);
+            }
+          }
+        })();
+        console.log(`Migração concluída! ${oldLogs.length} pedidos migrados.`);
+      }
+    } catch (migErr) {
+      console.error("Erro geral na migração de logs para pedidos:", migErr.message);
+    }
 }
 
 // Middleware de Autenticação
@@ -450,9 +495,10 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 app.get('/api/orders', authenticateToken, (req, res) => {
   try {
     const orders = db.prepare(`
-      SELECT o.*, u.name as emitter_name 
+      SELECT o.*, u.name as emitter_name, a.name as acceptor_name
       FROM purchase_orders o
       JOIN users u ON o.emitted_by = u.id
+      LEFT JOIN users a ON o.accepted_by = a.id
       ORDER BY o.created_at DESC
     `).all();
 
@@ -488,8 +534,12 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
       return res.json({ message: 'Status já atualizado.', status });
     }
 
-    // Update status
-    db.prepare("UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id);
+    // Update status and set accepted_by when transitioning to PREPARANDO
+    if (status === 'PREPARANDO') {
+      db.prepare("UPDATE purchase_orders SET status = ?, accepted_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, req.user.id, id);
+    } else {
+      db.prepare("UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id);
+    }
 
     // If completing the order, automatically log stock exit
     const isNowFinished = (status === 'FINALIZADO' || status === 'ERRO');
@@ -516,6 +566,30 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
     }
 
     res.json({ message: 'Status atualizado com sucesso!', status });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Exclude/Delete order from tracking queue (Admin only)
+app.delete('/api/orders/:id', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+
+  try {
+    const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    db.transaction(() => {
+      // Delete order items first
+      db.prepare("DELETE FROM order_items WHERE order_id = ?").run(id);
+      // Delete purchase order
+      db.prepare("DELETE FROM purchase_orders WHERE id = ?").run(id);
+    })();
+
+    logAction(req.user.id, req.user.username, 'EXCLUIR_PEDIDO', `Excluiu o pedido de expedição #${id} da loja ${order.store_name}.`);
+    res.json({ message: 'Pedido excluído com sucesso!' });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

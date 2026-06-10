@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut } from 'lucide-react';
+import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut, Trash2 } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import api from '../api';
@@ -73,6 +73,19 @@ const Deliveries = () => {
     }
   };
 
+  const handleDeleteOrder = async (id) => {
+    if (!window.confirm(`Tem certeza que deseja excluir o pedido #${id} definitivamente da fila de expedição?`)) {
+      return;
+    }
+    try {
+      await api.delete(`/orders/${id}`);
+      toast.success('Pedido excluído com sucesso.');
+      fetchOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erro ao excluir o pedido.');
+    }
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'PENDENTE':
@@ -102,7 +115,7 @@ const Deliveries = () => {
             background: 'rgba(245, 158, 11, 0.15)', color: 'var(--primary)', border: '1px solid var(--primary)',
             display: 'inline-flex', alignItems: 'center', gap: '6px'
           }}>
-            <Truck size={12} /> Em Rota 🚚
+            <Truck size={12} /> Em Rota
           </span>
         );
       case 'FINALIZADO':
@@ -417,7 +430,7 @@ const Deliveries = () => {
                   <option value="ALL">Todos os Status</option>
                   <option value="PENDENTE">Pendentes</option>
                   <option value="PREPARANDO">Preparando</option>
-                  <option value="EM_ROTA">Em Rota 🚚</option>
+                  <option value="EM_ROTA">Em Rota</option>
                   <option value="FINALIZADO">Entregues</option>
                   <option value="ERRO">Com Erros</option>
                 </select>
@@ -459,7 +472,7 @@ const Deliveries = () => {
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>ID</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data/Hora</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja Destinatária</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Emissor</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Responsáveis</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Produtos</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Status</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>Ações</th>
@@ -480,7 +493,18 @@ const Deliveries = () => {
                       <td data-label="ID" style={{ padding: '12px', fontWeight: 'bold', color: 'var(--primary)' }}>#{order.id}</td>
                       <td data-label="Data/Hora" style={{ padding: '12px', color: 'var(--text-muted)' }}>{formatDate(order.created_at)}</td>
                       <td data-label="Loja Destinatária" style={{ padding: '12px', fontWeight: '600' }}>{order.store_name}</td>
-                      <td data-label="Emissor" style={{ padding: '12px' }}>{order.emitter_name || 'Sistema'}</td>
+                      <td data-label="Responsáveis" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
+                          <span style={{ fontSize: '0.8rem' }}>
+                            <strong style={{ color: 'var(--text-muted)' }}>Emissor:</strong> {order.emitter_name || 'Sistema'}
+                          </span>
+                          {order.acceptor_name && (
+                            <span style={{ fontSize: '0.8rem' }}>
+                              <strong style={{ color: '#3b82f6' }}>Aceito por:</strong> {order.acceptor_name}
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td data-label="Produtos" style={{ padding: '12px' }}>
                         <button
                           onClick={() => setSelectedOrder(order)}
@@ -605,6 +629,28 @@ const Deliveries = () => {
                                 Divergência
                               </button>
                             </>
+                          )}
+
+                          {user.isAdmin && (
+                            <button
+                              onClick={() => handleDeleteOrder(order.id)}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.1)',
+                                border: '1px solid rgba(239, 68, 68, 0.3)',
+                                color: '#ef4444',
+                                padding: '6px 10px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                              }}
+                              title="Excluir da Fila"
+                            >
+                              <Trash2 size={12} /> Excluir
+                            </button>
                           )}
                         </div>
                       </td>

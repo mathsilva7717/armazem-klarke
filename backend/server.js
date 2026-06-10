@@ -700,6 +700,40 @@ app.put('/api/orders/:id/upload', authenticateToken, (req, res) => {
   }
 });
 
+// Delete order files (Invoice or Packing Slip)
+app.delete('/api/orders/:id/upload/:type', authenticateToken, (req, res) => {
+  const { id, type } = req.params;
+
+  if (type !== 'invoice' && type !== 'packing_slip') {
+    return res.status(400).json({ error: 'Tipo de arquivo inválido.' });
+  }
+
+  try {
+    const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    const columnName = type === 'invoice' ? 'invoice_path' : 'packing_slip_path';
+    const fileName = order[columnName];
+
+    if (fileName) {
+      const filePath = path.join(uploadsDir, fileName);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+      }
+    }
+
+    db.prepare(`UPDATE purchase_orders SET ${columnName} = NULL, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(id);
+
+    logAction(req.user.id, req.user.username, 'DELETE_DOC', `Excluiu o documento de ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} do pedido #${id}`);
+
+    res.json({ message: 'Arquivo excluído com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // PRODUCTS DATABASE (LEARNING SYSTEM)
 
 // Save/Update Product

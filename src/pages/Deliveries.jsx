@@ -142,6 +142,23 @@ const Deliveries = () => {
     };
   };
 
+  const handleDeleteFile = (orderId, type) => {
+    const typeLabel = type === 'invoice' ? 'Nota Fiscal' : 'Romaneio';
+    showConfirm(
+      'Confirmar Exclusão',
+      `Tem certeza que deseja excluir o documento de ${typeLabel} do pedido #${orderId}?`,
+      async () => {
+        try {
+          await api.delete(`/orders/${orderId}/upload/${type}`);
+          toast.success(`${typeLabel} excluído com sucesso.`);
+          fetchOrders();
+        } catch (error) {
+          toast.error(error.response?.data?.error || 'Erro ao excluir o documento.');
+        }
+      }
+    );
+  };
+
   const getStatusBadge = (status) => {
     switch (status) {
       case 'PENDENTE':
@@ -596,24 +613,41 @@ const Deliveries = () => {
                         <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                           {/* Nota Fiscal */}
                           {order.invoice_path ? (
-                            <a
-                              href={`/api/uploads/${order.invoice_path}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                color: 'var(--primary)',
-                                fontSize: '0.75rem',
-                                textDecoration: 'none',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontWeight: 'bold'
-                              }}
-                              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
-                            >
-                              <FileText size={12} /> Nota Fiscal
-                            </a>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              <a
+                                href={`/api/uploads/${order.invoice_path}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: 'var(--primary)',
+                                  fontSize: '0.75rem',
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontWeight: 'bold'
+                                }}
+                                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                              >
+                                <FileText size={12} /> Nota Fiscal
+                              </a>
+                              <button
+                                onClick={() => handleDeleteFile(order.id, 'invoice')}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'var(--error)',
+                                  cursor: 'pointer',
+                                  padding: '2px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Excluir Nota Fiscal"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           ) : (
                             <label style={{
                               color: 'var(--text-muted)',
@@ -639,24 +673,41 @@ const Deliveries = () => {
 
                           {/* Romaneio */}
                           {order.packing_slip_path ? (
-                            <a
-                              href={`/api/uploads/${order.packing_slip_path}`}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              style={{
-                                color: 'var(--primary)',
-                                fontSize: '0.75rem',
-                                textDecoration: 'none',
-                                display: 'inline-flex',
-                                alignItems: 'center',
-                                gap: '4px',
-                                fontWeight: 'bold'
-                              }}
-                              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
-                              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
-                            >
-                              <FileText size={12} /> Romaneio
-                            </a>
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
+                              <a
+                                href={`/api/uploads/${order.packing_slip_path}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                style={{
+                                  color: 'var(--primary)',
+                                  fontSize: '0.75rem',
+                                  textDecoration: 'none',
+                                  display: 'inline-flex',
+                                  alignItems: 'center',
+                                  gap: '4px',
+                                  fontWeight: 'bold'
+                                }}
+                                onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                                onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                              >
+                                <FileText size={12} /> Romaneio
+                              </a>
+                              <button
+                                onClick={() => handleDeleteFile(order.id, 'packing_slip')}
+                                style={{
+                                  background: 'transparent',
+                                  border: 'none',
+                                  color: 'var(--error)',
+                                  cursor: 'pointer',
+                                  padding: '2px',
+                                  display: 'inline-flex',
+                                  alignItems: 'center'
+                                }}
+                                title="Excluir Romaneio"
+                              >
+                                <Trash2 size={12} />
+                              </button>
+                            </div>
                           ) : (
                             <label style={{
                               color: 'var(--text-muted)',

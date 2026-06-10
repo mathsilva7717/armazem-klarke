@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Package, Printer, Search, Users, LogOut, Box, ArrowRight, FileText, AlertTriangle, Terminal, Headset, MessageSquare, Mail, Globe } from 'lucide-react';
+import { Package, Printer, Search, Users, LogOut, Box, ArrowRight, FileText, AlertTriangle, Terminal, Headset, MessageSquare, Mail, Globe, Truck } from 'lucide-react';
 import toast from 'react-hot-toast';
 
 const Dashboard = () => {
@@ -18,10 +18,10 @@ const Dashboard = () => {
 
   const menuItems = [
     {
-      title: 'Saída de Estoque',
-      desc: 'Registrar saída de produtos para lojas',
-      icon: <Package size={32} />,
-      path: '/saidas',
+      title: 'Expedição & Entregas',
+      desc: 'Fila de separação, transporte e status de pedidos',
+      icon: <Truck size={32} />,
+      path: '/deliveries',
       color: 'var(--primary)'
     },
     {

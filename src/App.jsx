@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { Toaster, toast } from 'react-hot-toast';
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
-import StockExit from './pages/StockExit';
+import Deliveries from './pages/Deliveries';
 import Users from './pages/Users';
 import Labels from './pages/Labels';
 import ProductSearch from './pages/ProductSearch';
@@ -95,10 +95,10 @@ function App() {
           } 
         />
         <Route 
-          path="/saidas" 
+          path="/deliveries" 
           element={
             <ProtectedRoute>
-              <StockExit />
+              <Deliveries />
             </ProtectedRoute>
           } 
         />

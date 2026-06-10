@@ -292,11 +292,11 @@ const PurchaseOrder = () => {
       // Abrir PDF em uma nova aba
       doc.output('dataurlnewwindow');
 
-      // Registrar no log de auditoria
+      // Registrar no banco de dados e iniciar fluxo de expedição
       try {
-        await api.post('/purchase-orders/log', { storeName, items });
+        await api.post('/orders', { storeName, items });
       } catch (logErr) {
-        console.warn("Erro ao registrar log do pedido:", logErr);
+        console.warn("Erro ao registrar pedido:", logErr);
       }
 
       toast.dismiss(loadToast);

@@ -137,6 +137,27 @@ function initDb() {
       details TEXT,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
+
+    // Purchase orders table
+    db.exec(`CREATE TABLE IF NOT EXISTS purchase_orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      store_name TEXT,
+      emitted_by INTEGER,
+      status TEXT DEFAULT 'PENDENTE',
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(emitted_by) REFERENCES users(id)
+    )`);
+
+    // Order items table
+    db.exec(`CREATE TABLE IF NOT EXISTS order_items (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER,
+      sku TEXT,
+      name TEXT,
+      quantity INTEGER,
+      FOREIGN KEY(order_id) REFERENCES purchase_orders(id)
+    )`);
 }
 
 // Middleware de Autenticação
@@ -387,25 +408,114 @@ app.post('/api/users/:id/reset-password', authenticateToken, requireAdmin, (req,
   }
 });
 
-// Log purchase order creation
-app.post('/api/purchase-orders/log', authenticateToken, (req, res) => {
+// Register purchase order and begin tracking
+app.post('/api/orders', authenticateToken, (req, res) => {
   const { storeName, items } = req.body;
-  if (!storeName || !items || !Array.isArray(items)) {
-    return res.status(400).json({ error: 'Dados do pedido inválidos.' });
+  const userId = req.user.id;
+
+  if (!storeName || !items || !Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Dados do pedido inválidos ou vazios.' });
   }
 
+  const insertOrder = db.prepare("INSERT INTO purchase_orders (store_name, emitted_by, status) VALUES (?, ?, ?)");
+  const insertItem = db.prepare("INSERT INTO order_items (order_id, sku, name, quantity) VALUES (?, ?, ?, ?)");
+
   try {
+    const executeTx = db.transaction(() => {
+      const info = insertOrder.run(storeName, userId, 'PENDENTE');
+      const orderId = info.lastInsertRowid;
+
+      for (const item of items) {
+        insertItem.run(orderId, item.sku, item.name, item.quantity);
+      }
+      return orderId;
+    });
+
+    const orderId = executeTx();
+
+    // Log internally for compatibility with Logs.jsx re-download button
     const detailsObj = {
       storeName,
       items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity }))
     };
-    logAction(
-      req.user.id, 
-      req.user.username, 
-      'GERAR_PEDIDO', 
-      JSON.stringify(detailsObj)
-    );
-    res.status(201).json({ message: 'Pedido registrado no log com sucesso.' });
+    logAction(userId, req.user.username, 'GERAR_PEDIDO', JSON.stringify(detailsObj));
+
+    res.status(201).json({ id: orderId, storeName, status: 'PENDENTE' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Get all orders with their nested items
+app.get('/api/orders', authenticateToken, (req, res) => {
+  try {
+    const orders = db.prepare(`
+      SELECT o.*, u.name as emitter_name 
+      FROM purchase_orders o
+      JOIN users u ON o.emitted_by = u.id
+      ORDER BY o.created_at DESC
+    `).all();
+
+    const ordersWithItems = orders.map(order => {
+      const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(order.id);
+      return { ...order, items };
+    });
+
+    res.json(ordersWithItems);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Update order status and trigger automated inventory deductions on completion
+app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+  const validStatuses = ['PENDENTE', 'PREPARANDO', 'EM_ROTA', 'FINALIZADO', 'ERRO'];
+
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ error: 'Status inválido.' });
+  }
+
+  try {
+    const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    const oldStatus = order.status;
+    if (oldStatus === status) {
+      return res.json({ message: 'Status já atualizado.', status });
+    }
+
+    // Update status
+    db.prepare("UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id);
+
+    // If completing the order, automatically log stock exit
+    const isNowFinished = (status === 'FINALIZADO' || status === 'ERRO');
+    const wasAlreadyFinished = (oldStatus === 'FINALIZADO' || oldStatus === 'ERRO');
+
+    if (isNowFinished && !wasAlreadyFinished) {
+      const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(id);
+      
+      const insertExit = db.prepare(`
+        INSERT INTO stock_exits (sku, quantity, store, exit_date, operator_id, unit_price)
+        VALUES (?, ?, ?, ?, ?, 0)
+      `);
+
+      db.transaction(() => {
+        const exitDate = new Date().toISOString().slice(0, 10);
+        for (const item of items) {
+          insertExit.run(item.sku, item.quantity, order.store_name, exitDate, req.user.id);
+        }
+      })();
+
+      logAction(req.user.id, req.user.username, 'EXPEDICAO_PEDIDO', `Finalizou pedido #${id} (${status}). Saídas de estoque registradas automaticamente.`);
+    } else {
+      logAction(req.user.id, req.user.username, 'STATUS_PEDIDO', `Alterou status do pedido #${id} de ${oldStatus} para ${status}.`);
+    }
+
+    res.json({ message: 'Status atualizado com sucesso!', status });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

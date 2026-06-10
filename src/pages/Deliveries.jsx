@@ -1,0 +1,602 @@
+import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut } from 'lucide-react';
+import toast from 'react-hot-toast';
+import jsPDF from 'jspdf';
+import api from '../api';
+
+const Deliveries = () => {
+  const navigate = useNavigate();
+  const [orders, setOrders] = useState([]);
+  const [filteredOrders, setFilteredOrders] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState('ALL');
+
+  const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
+
+  const handleLogout = () => {
+    localStorage.removeItem('armazem_auth');
+    localStorage.removeItem('armazem_token');
+    localStorage.removeItem('armazem_user');
+    toast.success('Sessão encerrada.');
+    navigate('/login');
+  };
+
+  useEffect(() => {
+    fetchOrders();
+  }, []);
+
+  useEffect(() => {
+    filterOrders();
+  }, [orders, searchTerm, statusFilter]);
+
+  const fetchOrders = async () => {
+    setLoading(true);
+    try {
+      const response = await api.get('/orders');
+      setOrders(response.data);
+    } catch (error) {
+      toast.error('Erro ao carregar os pedidos de expedição.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const filterOrders = () => {
+    let tempOrders = [...orders];
+
+    if (statusFilter !== 'ALL') {
+      tempOrders = tempOrders.filter(o => o.status === statusFilter);
+    }
+
+    if (searchTerm) {
+      const search = searchTerm.toLowerCase();
+      tempOrders = tempOrders.filter(o => 
+        o.store_name.toLowerCase().includes(search) ||
+        o.id.toString().includes(search) ||
+        (o.emitter_name && o.emitter_name.toLowerCase().includes(search))
+      );
+    }
+
+    setFilteredOrders(tempOrders);
+  };
+
+  const handleUpdateStatus = async (id, newStatus) => {
+    try {
+      await api.put(`/orders/${id}/status`, { status: newStatus });
+      toast.success(`Status atualizado para: ${newStatus}`);
+      fetchOrders();
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erro ao atualizar status.');
+    }
+  };
+
+  const getStatusBadge = (status) => {
+    switch (status) {
+      case 'PENDENTE':
+        return (
+          <span style={{ 
+            fontSize: '0.75rem', padding: '6px 10px', fontWeight: '700', textTransform: 'uppercase',
+            background: 'rgba(115, 115, 115, 0.15)', color: 'var(--text-muted)', border: '1px solid var(--border)',
+            display: 'inline-flex', alignItems: 'center', gap: '6px'
+          }}>
+            <Clock size={12} /> Pendente
+          </span>
+        );
+      case 'PREPARANDO':
+        return (
+          <span style={{ 
+            fontSize: '0.75rem', padding: '6px 10px', fontWeight: '700', textTransform: 'uppercase',
+            background: 'rgba(59, 130, 246, 0.15)', color: '#3b82f6', border: '1px solid #3b82f6',
+            display: 'inline-flex', alignItems: 'center', gap: '6px'
+          }}>
+            <Package size={12} /> Preparando
+          </span>
+        );
+      case 'EM_ROTA':
+        return (
+          <span style={{ 
+            fontSize: '0.75rem', padding: '6px 10px', fontWeight: '700', textTransform: 'uppercase',
+            background: 'rgba(245, 158, 11, 0.15)', color: 'var(--primary)', border: '1px solid var(--primary)',
+            display: 'inline-flex', alignItems: 'center', gap: '6px'
+          }}>
+            <Truck size={12} /> Em Rota 🚚
+          </span>
+        );
+      case 'FINALIZADO':
+        return (
+          <span style={{ 
+            fontSize: '0.75rem', padding: '6px 10px', fontWeight: '700', textTransform: 'uppercase',
+            background: 'rgba(34, 197, 94, 0.15)', color: '#22c55e', border: '1px solid #22c55e',
+            display: 'inline-flex', alignItems: 'center', gap: '6px'
+          }}>
+            <CheckCircle size={12} /> Entregue
+          </span>
+        );
+      case 'ERRO':
+        return (
+          <span style={{ 
+            fontSize: '0.75rem', padding: '6px 10px', fontWeight: '700', textTransform: 'uppercase',
+            background: 'rgba(239, 68, 68, 0.15)', color: '#ef4444', border: '1px solid #ef4444',
+            display: 'inline-flex', alignItems: 'center', gap: '6px'
+          }}>
+            <AlertTriangle size={12} /> Com Erros
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const getBase64ImageFromUrl = async (url) => {
+    try {
+      const res = await fetch(url);
+      if (!res.ok) return null;
+      const blob = await res.blob();
+      return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.addEventListener("load", () => resolve(reader.result), false);
+        reader.onerror = () => resolve(null);
+        reader.readAsDataURL(blob);
+      });
+    } catch (e) {
+      return null;
+    }
+  };
+
+  const handleDownloadPDF = async (order) => {
+    const loadToast = toast.loading('Gerando PDF do Pedido...');
+    try {
+      const logoBase64 = await getBase64ImageFromUrl('/loja.png');
+      const doc = new jsPDF('p', 'mm', 'a4');
+
+      const colorAmber = [245, 158, 11];
+      const colorDark = [38, 38, 38];
+
+      const orderDate = new Date(order.created_at).toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+
+      // Header drawing
+      const drawHeader = (pageNumber) => {
+        doc.setFillColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+        doc.rect(0, 0, 210, 5, 'F');
+
+        if (pageNumber === 1) {
+          let textXOffset = 20;
+          if (logoBase64) {
+            doc.addImage(logoBase64, 'PNG', 20, 15, 35, 18);
+            textXOffset = 62;
+          } else {
+            doc.setDrawColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+            doc.setLineWidth(0.8);
+            doc.rect(20, 15, 35, 18);
+            doc.setFont('helvetica', 'bold');
+            doc.setFontSize(8);
+            doc.setTextColor(colorAmber[0], colorAmber[1], colorAmber[2]);
+            doc.text("KLA LOGÍSTICA", 37.5, 25, { align: 'center' });
+            textXOffset = 62;
+          }
+
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(14);
+          doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+          doc.text(order.store_name.toUpperCase(), textXOffset, 22);
+
+          doc.setFont('helvetica', 'normal');
+          doc.setFontSize(9);
+          doc.setTextColor(120, 120, 120);
+          doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
+
+          doc.line(20, 38, 190, 38);
+
+          doc.setFillColor(250, 250, 250);
+          doc.rect(20, 42, 170, 20, 'F');
+          doc.setDrawColor(230, 230, 230);
+          doc.rect(20, 42, 170, 20);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(9);
+          doc.setTextColor(80, 80, 80);
+          doc.text("Responsável Emissor:", 25, 49);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.text(order.emitter_name || 'Administrador', 25, 54);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Data de Emissão:", 120, 49);
+          doc.setFont('helvetica', 'normal');
+          doc.setTextColor(0, 0, 0);
+          doc.text(orderDate, 120, 54);
+        } else {
+          doc.setFont('helvetica', 'bold');
+          doc.setFontSize(10);
+          doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
+          doc.text(`SOLICITAÇÃO DE PEDIDO DE COMPRA - ${order.store_name.toUpperCase()} (Pág. ${pageNumber})`, 20, 15);
+          doc.line(20, 18, 190, 18);
+        }
+      };
+
+      const drawTableHeader = (y) => {
+        doc.setFillColor(colorDark[0], colorDark[1], colorDark[2]);
+        doc.rect(20, y, 170, 8, 'F');
+        doc.setFont('helvetica', 'bold');
+        doc.setFontSize(9);
+        doc.setTextColor(255, 255, 255);
+        doc.text("SKU", 25, y + 5.5);
+        doc.text("NOME DO PRODUTO", 65, y + 5.5);
+        doc.text("QUANTIDADE", 165, y + 5.5);
+      };
+
+      let pageNum = 1;
+      let pageTableStartY = 74;
+      let currentY = pageTableStartY;
+
+      drawHeader(pageNum);
+      drawTableHeader(currentY);
+      currentY += 8;
+
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(0, 0, 0);
+
+      order.items.forEach((item, index) => {
+        if (currentY + 9 > 240) {
+          doc.setDrawColor(200, 200, 200);
+          doc.line(20, currentY, 190, currentY);
+          doc.line(20, pageTableStartY, 20, currentY);
+          doc.line(190, pageTableStartY, 190, currentY);
+
+          doc.addPage();
+          pageNum++;
+          drawHeader(pageNum);
+
+          pageTableStartY = 25;
+          currentY = pageTableStartY;
+          drawTableHeader(currentY);
+          currentY += 8;
+        }
+
+        if (index % 2 === 1) {
+          doc.setFillColor(248, 248, 248);
+          doc.rect(20, currentY, 170, 9, 'F');
+        }
+        
+        doc.setDrawColor(240, 240, 240);
+        doc.line(20, currentY + 9, 190, currentY + 9);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.sku, 25, currentY + 6);
+
+        doc.setFont('helvetica', 'normal');
+        const itemDesc = item.name.length > 50 ? item.name.substring(0, 47) + '...' : item.name;
+        doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
+
+        doc.setFont('helvetica', 'bold');
+        doc.text(item.quantity.toString(), 165, currentY + 6);
+
+        currentY += 9;
+      });
+
+      doc.setDrawColor(200, 200, 200);
+      doc.line(20, currentY, 190, currentY);
+      doc.line(20, pageTableStartY, 20, currentY);
+      doc.line(190, pageTableStartY, 190, currentY);
+
+      const signatureY = Math.max(240, currentY + 15);
+      doc.setDrawColor(180, 180, 180);
+      doc.line(60, signatureY, 150, signatureY);
+
+      doc.setFont('helvetica', 'bold');
+      doc.text("ASSINATURA DO RESPONSÁVEL", 105, signatureY + 5, { align: 'center' });
+
+      doc.setFont('helvetica', 'normal');
+      doc.text(order.emitter_name || 'Operador do Armazém', 105, signatureY + 10, { align: 'center' });
+
+      const totalPages = doc.internal.getNumberOfPages();
+      for (let i = 1; i <= totalPages; i++) {
+        doc.setPage(i);
+        doc.setFont('helvetica', 'italic');
+        doc.setFontSize(7);
+        doc.setTextColor(150, 150, 150);
+        doc.text(`Documento emitido eletronicamente via Sistema Klarke. Página ${i} de ${totalPages}`, 105, 285, { align: 'center' });
+      }
+
+      doc.output('dataurlnewwindow');
+      toast.dismiss(loadToast);
+      toast.success('Pedido gerado com sucesso!');
+    } catch (err) {
+      toast.dismiss(loadToast);
+      toast.error('Erro ao re-gerar o PDF.');
+    }
+  };
+
+  const formatDate = (dateStr) => {
+    try {
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('pt-BR', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  return (
+    <div style={{ minHeight: '100vh', padding: '20px' }}>
+      <header style={{ 
+        display: 'flex', 
+        justifyContent: 'space-between', 
+        alignItems: 'center', 
+        maxWidth: '1200px', 
+        margin: '0 auto 16px',
+        padding: '16px 0',
+        borderBottom: '2px solid var(--primary)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <button 
+            onClick={() => navigate('/')}
+            style={{ background: 'transparent', border: 'none', color: 'var(--primary)', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            <ArrowLeft size={24} />
+          </button>
+          <h2 style={{ fontSize: '1.1rem', fontWeight: '900', textTransform: 'uppercase', letterSpacing: '1px' }}>Expedição & Entregas</h2>
+        </div>
+
+        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
+          <div style={{ textAlign: 'right' }}>
+            <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>Operador</p>
+            <p style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '700' }}>{user.name || user.username}</p>
+          </div>
+          <button 
+            onClick={handleLogout} 
+            style={{ 
+              background: 'transparent', 
+              color: 'var(--text-muted)', 
+              border: '1px solid var(--border)', 
+              cursor: 'pointer',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '0.8rem',
+              padding: '8px 12px',
+              fontWeight: '600'
+            }}
+          >
+            Sair <LogOut size={16} />
+          </button>
+        </div>
+      </header>
+
+      <main style={{ maxWidth: '1200px', margin: '0 auto' }}>
+        <section className="glass-card animate-fade-in" style={{ padding: '20px', marginBottom: '24px' }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', alignItems: 'center', justifyContent: 'space-between' }}>
+            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '16px', flex: '1', minWidth: '280px' }}>
+              <div style={{ position: 'relative', flex: '1', minWidth: '200px' }}>
+                <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                <input 
+                  type="text" 
+                  placeholder="Pesquisar por loja ou ID..."
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  style={{
+                    width: '100%',
+                    padding: '10px 12px 10px 38px',
+                    background: '#000',
+                    border: '1px solid var(--border)',
+                    color: '#fff',
+                    outline: 'none'
+                  }}
+                />
+              </div>
+
+              <div>
+                <select 
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  style={{
+                    padding: '10px 16px',
+                    background: '#000',
+                    border: '1px solid var(--border)',
+                    color: '#fff',
+                    outline: 'none',
+                    height: '100%',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="ALL">Todos os Status</option>
+                  <option value="PENDENTE">Pendentes</option>
+                  <option value="PREPARANDO">Preparando</option>
+                  <option value="EM_ROTA">Em Rota 🚚</option>
+                  <option value="FINALIZADO">Entregues</option>
+                  <option value="ERRO">Com Erros</option>
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <button 
+                onClick={fetchOrders} 
+                disabled={loading}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid var(--border)',
+                  color: 'white',
+                  padding: '10px 16px',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  cursor: 'pointer',
+                  fontWeight: '600',
+                  fontSize: '0.85rem'
+                }}
+              >
+                <RefreshCw size={14} className={loading ? 'animate-spin' : ''} /> {loading ? 'Atualizando...' : 'Atualizar'}
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section className="glass-card animate-fade-in" style={{ padding: '32px' }}>
+          <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px' }}>
+            <Truck size={20} color="var(--primary)" /> Fila de Expedição ({filteredOrders.length})
+          </h3>
+
+          <div style={{ overflowX: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+              <thead>
+                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>ID</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data/Hora</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja Destinatária</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Emissor</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Produtos</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Status</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {loading ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Carregando pedidos de expedição...</td>
+                  </tr>
+                ) : filteredOrders.length === 0 ? (
+                  <tr>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</td>
+                  </tr>
+                ) : (
+                  filteredOrders.map(order => (
+                    <tr key={order.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.3)' }}>
+                      <td data-label="ID" style={{ padding: '12px', fontWeight: 'bold', color: 'var(--primary)' }}>#{order.id}</td>
+                      <td data-label="Data/Hora" style={{ padding: '12px', color: 'var(--text-muted)' }}>{formatDate(order.created_at)}</td>
+                      <td data-label="Loja Destinatária" style={{ padding: '12px', fontWeight: '600' }}>{order.store_name}</td>
+                      <td data-label="Emissor" style={{ padding: '12px' }}>{order.emitter_name || 'Sistema'}</td>
+                      <td data-label="Produtos" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                          {order.items?.map(it => (
+                            <span key={it.id} style={{ fontSize: '0.8rem' }}>
+                              • <strong>{it.sku}</strong> - {it.name.toUpperCase()} (x{it.quantity})
+                            </span>
+                          ))}
+                        </div>
+                      </td>
+                      <td data-label="Status" style={{ padding: '12px' }}>{getStatusBadge(order.status)}</td>
+                      <td data-label="Ações" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', gap: '8px', justifyContent: 'center', flexWrap: 'wrap' }}>
+                          <button
+                            onClick={() => handleDownloadPDF(order)}
+                            style={{
+                              background: 'transparent',
+                              border: '1px solid var(--border)',
+                              color: 'var(--text-main)',
+                              padding: '6px 10px',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              gap: '6px',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              textTransform: 'uppercase'
+                            }}
+                            title="Baixar PDF do Pedido"
+                          >
+                            <Download size={12} /> PDF
+                          </button>
+
+                          {order.status === 'PENDENTE' && (
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'PREPARANDO')}
+                              style={{
+                                background: 'rgba(59, 130, 246, 0.15)',
+                                border: '1px solid #3b82f6',
+                                color: '#3b82f6',
+                                padding: '6px 10px',
+                                cursor: 'pointer',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              Aceitar
+                            </button>
+                          )}
+
+                          {order.status === 'PREPARANDO' && (
+                            <button
+                              onClick={() => handleUpdateStatus(order.id, 'EM_ROTA')}
+                              style={{
+                                background: 'rgba(245, 158, 11, 0.15)',
+                                border: '1px solid var(--primary)',
+                                color: 'var(--primary)',
+                                padding: '6px 10px',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontSize: '0.75rem',
+                                fontWeight: 'bold',
+                                textTransform: 'uppercase'
+                              }}
+                            >
+                              <Truck size={12} /> Despachar
+                            </button>
+                          )}
+
+                          {order.status === 'EM_ROTA' && (
+                            <>
+                              <button
+                                onClick={() => handleUpdateStatus(order.id, 'FINALIZADO')}
+                                style={{
+                                  background: 'rgba(34, 197, 94, 0.15)',
+                                  border: '1px solid #22c55e',
+                                  color: '#22c55e',
+                                  padding: '6px 10px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 'bold',
+                                  textTransform: 'uppercase'
+                                }}
+                              >
+                                Finalizar
+                              </button>
+                              <button
+                                onClick={() => handleUpdateStatus(order.id, 'ERRO')}
+                                style={{
+                                  background: 'rgba(239, 68, 68, 0.15)',
+                                  border: '1px solid #ef4444',
+                                  color: '#ef4444',
+                                  padding: '6px 10px',
+                                  cursor: 'pointer',
+                                  fontSize: '0.75rem',
+                                  fontWeight: 'bold',
+                                  textTransform: 'uppercase'
+                                }}
+                              >
+                                Divergência
+                              </button>
+                            </>
+                          )}
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+  );
+};
+
+export default Deliveries;

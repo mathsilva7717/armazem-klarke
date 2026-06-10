@@ -352,6 +352,20 @@ app.get('/api/users', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
+// Get user info by username (Authenticated users)
+app.get('/api/users/by-username/:username', authenticateToken, (req, res) => {
+  const { username } = req.params;
+  try {
+    const row = db.prepare("SELECT id, name, username FROM users WHERE username = ?").get(username);
+    if (!row) {
+      return res.status(404).json({ error: 'Usuário não encontrado.' });
+    }
+    res.json(row);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Delete user
 app.delete('/api/users/:id', authenticateToken, requireAdmin, (req, res) => {
   const { id } = req.params;
@@ -463,11 +477,29 @@ app.post('/api/users/:id/reset-password', authenticateToken, requireAdmin, (req,
 
 // Register purchase order and begin tracking
 app.post('/api/orders', authenticateToken, (req, res) => {
-  const { storeName, items } = req.body;
-  const userId = req.user.id;
+  const { storeName, items, emittedByUsername } = req.body;
+  let userId = req.user.id;
+  let username = req.user.username;
 
   if (!storeName || !items || !Array.isArray(items) || items.length === 0) {
     return res.status(400).json({ error: 'Dados do pedido inválidos ou vazios.' });
+  }
+
+  const allowedStores = [
+    'LOJA TUDO 10 OU 20 - PRAIA GRANDE',
+    'LOJA TUDO 10 OU 20 - SÃO VICENTE'
+  ];
+
+  if (!allowedStores.includes(storeName)) {
+    return res.status(400).json({ error: 'Loja inválida ou não cadastrada.' });
+  }
+
+  if (emittedByUsername) {
+    const targetUser = db.prepare("SELECT id, username FROM users WHERE username = ?").get(emittedByUsername);
+    if (targetUser) {
+      userId = targetUser.id;
+      username = targetUser.username;
+    }
   }
 
   const insertOrder = db.prepare("INSERT INTO purchase_orders (store_name, emitted_by, status) VALUES (?, ?, ?)");
@@ -489,9 +521,10 @@ app.post('/api/orders', authenticateToken, (req, res) => {
     // Log internally for compatibility with Logs.jsx re-download button
     const detailsObj = {
       storeName,
-      items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity }))
+      items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity })),
+      emittedByUsername: username
     };
-    logAction(userId, req.user.username, 'GERAR_PEDIDO', JSON.stringify(detailsObj));
+    logAction(userId, username, 'GERAR_PEDIDO', JSON.stringify(detailsObj));
 
     res.status(201).json({ id: orderId, storeName, status: 'PENDENTE' });
   } catch (err) {

@@ -173,7 +173,7 @@ const Logs = () => {
     }
   };
 
-  const handleRedownloadOrder = async (detailsJson) => {
+  const handleRedownloadOrder = async (detailsJson, originalUsername) => {
     let data;
     try {
       data = JSON.parse(detailsJson);
@@ -189,6 +189,16 @@ const Logs = () => {
     }
 
     const loadToast = toast.loading('Re-gerando PDF do Pedido...');
+
+    let emitterName = originalUsername || data.emittedByUsername || 'Administrador';
+    try {
+      const uRes = await api.get(`/users/by-username/${emitterName}`);
+      if (uRes.data && uRes.data.name) {
+        emitterName = uRes.data.name;
+      }
+    } catch (e) {
+      console.warn('Could not fetch original emitter name:', e);
+    }
 
     try {
       const logoBase64 = await getBase64ImageFromUrl('/loja.png');
@@ -259,7 +269,7 @@ const Logs = () => {
           doc.text("Responsável Emissor (Cópia):", 25, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(user.name || user.username || 'Administrador', 25, 54);
+          doc.text(emitterName, 25, 54);
 
           // Info direita
           doc.setFont('helvetica', 'bold');
@@ -371,7 +381,7 @@ const Logs = () => {
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text(user.name || user.username || 'Operador', 105, signatureY + 10, { align: 'center' });
+      doc.text(emitterName, 105, signatureY + 10, { align: 'center' });
 
       // 7. Rodapé Administrativo e Paginação (passado em todas as páginas)
       const totalPages = doc.internal.getNumberOfPages();
@@ -393,13 +403,14 @@ const Logs = () => {
     }
   };
 
-  const handleRepeatOrder = (detailsJson) => {
+  const handleRepeatOrder = (detailsJson, originalUsername) => {
     try {
       const data = JSON.parse(detailsJson);
       if (data && data.storeName && Array.isArray(data.items)) {
         localStorage.setItem('armazem_repeat_order', JSON.stringify({
           storeName: data.storeName,
-          items: data.items
+          items: data.items,
+          emittedByUsername: originalUsername || data.emittedByUsername
         }));
         toast.success('Pedido copiado! Redirecionando para preenchimento...');
         navigate('/purchase-order');
@@ -599,7 +610,7 @@ const Logs = () => {
                             </span>
                             <div style={{ display: 'flex', gap: '8px' }}>
                               <button
-                                onClick={() => handleRedownloadOrder(log.details)}
+                                onClick={() => handleRedownloadOrder(log.details, log.username)}
                                 style={{
                                   background: 'rgba(245, 158, 11, 0.15)',
                                   border: '1px solid var(--primary)',
@@ -619,7 +630,7 @@ const Logs = () => {
                                 <Download size={12} /> PDF
                               </button>
                               <button
-                                onClick={() => handleRepeatOrder(log.details)}
+                                onClick={() => handleRepeatOrder(log.details, log.username)}
                                 style={{
                                   background: 'rgba(59, 130, 246, 0.15)',
                                   border: '1px solid #3b82f6',

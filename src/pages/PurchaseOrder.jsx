@@ -11,6 +11,7 @@ const PurchaseOrder = () => {
   
   const [storeName, setStoreName] = useState('');
   const [items, setItems] = useState([]);
+  const [orderEmitter, setOrderEmitter] = useState(null);
   const [formData, setFormData] = useState({
     sku: '',
     name: '',
@@ -22,7 +23,15 @@ const PurchaseOrder = () => {
     if (repeatData) {
       try {
         const parsed = JSON.parse(repeatData);
-        if (parsed.storeName) setStoreName(parsed.storeName);
+        if (parsed.storeName) {
+          let normalizedStore = parsed.storeName;
+          if (normalizedStore === 'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE') {
+            normalizedStore = 'LOJA TUDO 10 OU 20 - PRAIA GRANDE';
+          } else if (normalizedStore === 'LOJA TUDO POR 10 OU 20 - SÃO VICENTE') {
+            normalizedStore = 'LOJA TUDO 10 OU 20 - SÃO VICENTE';
+          }
+          setStoreName(normalizedStore);
+        }
         if (Array.isArray(parsed.items)) {
           const formattedItems = parsed.items.map((it, idx) => ({
             id: `${Date.now()}-${idx}`,
@@ -33,6 +42,18 @@ const PurchaseOrder = () => {
           setItems(formattedItems);
           toast.success('Pedido anterior carregado com sucesso!');
         }
+        if (parsed.emittedByUsername) {
+          api.get(`/users/by-username/${parsed.emittedByUsername}`)
+            .then(res => {
+              if (res.data) {
+                setOrderEmitter(res.data);
+              }
+            })
+            .catch(err => {
+              console.warn('Could not fetch original emitter details:', err);
+              setOrderEmitter({ username: parsed.emittedByUsername, name: parsed.emittedByUsername });
+            });
+        }
       } catch (e) {
         console.error('Erro ao carregar pedido repetido:', e);
       } finally {
@@ -42,8 +63,8 @@ const PurchaseOrder = () => {
   }, []);
 
   const stores = [
-    'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',
-    'LOJA TUDO POR 10 OU 20 - SÃO VICENTE'
+    'LOJA TUDO 10 OU 20 - PRAIA GRANDE',
+    'LOJA TUDO 10 OU 20 - SÃO VICENTE'
   ];
 
   const handleLogout = () => {
@@ -192,7 +213,7 @@ const PurchaseOrder = () => {
           doc.text("Responsável Emissor:", 25, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(user.name || user.username || 'Administrador', 25, 54);
+          doc.text(orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Administrador'), 25, 54);
 
           // Info direita
           doc.setFont('helvetica', 'bold');
@@ -305,7 +326,7 @@ const PurchaseOrder = () => {
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text(user.name || user.username || 'Operador do Armazém', 105, signatureY + 10, { align: 'center' });
+      doc.text(orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Operador do Armazém'), 105, signatureY + 10, { align: 'center' });
 
       // 7. Rodapé Administrativo
       doc.setFont('helvetica', 'italic');
@@ -316,9 +337,12 @@ const PurchaseOrder = () => {
       // Abrir PDF em uma nova aba
       doc.output('dataurlnewwindow');
 
-      // Registrar no banco de dados e iniciar fluxo de expedição
       try {
-        await api.post('/orders', { storeName, items });
+        await api.post('/orders', { 
+          storeName, 
+          items,
+          emittedByUsername: orderEmitter ? orderEmitter.username : user.username
+        });
       } catch (logErr) {
         console.warn("Erro ao registrar pedido:", logErr);
       }
@@ -443,10 +467,7 @@ const PurchaseOrder = () => {
 
           <div className="input-group" style={{ marginBottom: '24px' }}>
             <label><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Nome da Loja Destinatária</label>
-            <input
-              type="text"
-              list="stores-list"
-              placeholder="Digite ou selecione a loja"
+            <select
               value={storeName}
               onChange={(e) => setStoreName(e.target.value)}
               required
@@ -457,12 +478,20 @@ const PurchaseOrder = () => {
                 border: '1px solid var(--border)',
                 color: 'white',
                 outline: 'none',
-                transition: 'border-color 0.2s ease'
+                transition: 'border-color 0.2s ease',
+                cursor: 'pointer'
               }}
-            />
-            <datalist id="stores-list">
-              {stores.map(s => <option key={s} value={s} />)}
-            </datalist>
+            >
+              <option value="" disabled>Selecione a loja destinatária</option>
+              {stores.map(s => (
+                <option key={s} value={s} style={{ background: '#121212', color: 'white' }}>{s}</option>
+              ))}
+            </select>
+            {orderEmitter && (
+              <p style={{ fontSize: '0.8rem', color: 'var(--primary)', marginTop: '8px', fontWeight: 'bold' }}>
+                Repetindo pedido emitido originalmente por: {orderEmitter.name || orderEmitter.username}
+              </p>
+            )}
           </div>
 
           <div style={{ flex: 1, minHeight: '200px', marginBottom: '24px' }}>

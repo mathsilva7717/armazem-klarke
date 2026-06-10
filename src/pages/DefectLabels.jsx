@@ -13,8 +13,8 @@ const DefectLabels = () => {
   const [quantity, setQuantity] = useState(1);
 
   const stores = [
-    'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',
-    'LOJA TUDO POR 10 OU 20 - SÃO VICENTE'
+    'LOJA TUDO 10 OU 20 - PRAIA GRANDE',
+    'LOJA TUDO 10 OU 20 - SÃO VICENTE'
   ];
 
   const commonDefects = [
@@ -320,10 +320,7 @@ const DefectLabels = () => {
           <form onSubmit={handleGenerateDefectLabels}>
             <div className="input-group">
               <label><ShoppingBag size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Nome da Loja Origem</label>
-              <input
-                type="text"
-                list="defect-stores-list"
-                placeholder="Digite ou selecione a loja"
+              <select
                 value={storeName}
                 onChange={(e) => setStoreName(e.target.value)}
                 required
@@ -334,12 +331,15 @@ const DefectLabels = () => {
                   border: '1px solid var(--border)',
                   color: 'white',
                   outline: 'none',
-                  transition: 'border-color 0.2s ease'
+                  transition: 'border-color 0.2s ease',
+                  cursor: 'pointer'
                 }}
-              />
-              <datalist id="defect-stores-list">
-                {stores.map(s => <option key={s} value={s} />)}
-              </datalist>
+              >
+                <option value="" disabled>Selecione a loja origem</option>
+                {stores.map(s => (
+                  <option key={s} value={s} style={{ background: '#121212', color: 'white' }}>{s}</option>
+                ))}
+              </select>
             </div>
 
             <div className="input-group">

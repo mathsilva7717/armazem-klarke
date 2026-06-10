@@ -24,8 +24,8 @@ const StockExit = () => {
   const itemsPerPage = 10;
 
   const stores = [
-    'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',
-    'LOJA TUDO POR 10 OU 20 - SÃO VICENTE'
+    'LOJA TUDO 10 OU 20 - PRAIA GRANDE',
+    'LOJA TUDO 10 OU 20 - SÃO VICENTE'
   ];
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');

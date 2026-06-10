@@ -393,6 +393,24 @@ const Logs = () => {
     }
   };
 
+  const handleRepeatOrder = (detailsJson) => {
+    try {
+      const data = JSON.parse(detailsJson);
+      if (data && data.storeName && Array.isArray(data.items)) {
+        localStorage.setItem('armazem_repeat_order', JSON.stringify({
+          storeName: data.storeName,
+          items: data.items
+        }));
+        toast.success('Pedido copiado! Redirecionando para preenchimento...');
+        navigate('/purchase-order');
+      } else {
+        toast.error('Dados do pedido inválidos para repetição.');
+      }
+    } catch (e) {
+      toast.error('Erro ao processar dados do pedido.');
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <header style={{ 
@@ -572,32 +590,55 @@ const Logs = () => {
                               {(() => {
                                 try {
                                   const data = JSON.parse(log.details);
-                                  return `Pedido gerado para: ${data.storeName} (${data.items?.length || 0} itens)`;
+                                  const totalQty = data.items?.reduce((sum, it) => sum + parseInt(it.quantity || 0), 0) || 0;
+                                  return `Pedido gerado para: ${data.storeName} (${totalQty} itens)`;
                                 } catch (e) {
                                   return log.details;
                                 }
                               })()}
                             </span>
-                            <button
-                              onClick={() => handleRedownloadOrder(log.details)}
-                              style={{
-                                background: 'rgba(245, 158, 11, 0.15)',
-                                border: '1px solid var(--primary)',
-                                color: 'var(--primary)',
-                                padding: '4px 8px',
-                                fontSize: '0.75rem',
-                                fontWeight: '700',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                textTransform: 'uppercase',
-                                fontFamily: 'sans-serif'
-                              }}
-                              title="Rebaixar PDF do Pedido"
-                            >
-                              <Download size={12} /> PDF
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => handleRedownloadOrder(log.details)}
+                                style={{
+                                  background: 'rgba(245, 158, 11, 0.15)',
+                                  border: '1px solid var(--primary)',
+                                  color: 'var(--primary)',
+                                  padding: '4px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '700',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  textTransform: 'uppercase',
+                                  fontFamily: 'sans-serif'
+                                }}
+                                title="Rebaixar PDF do Pedido"
+                              >
+                                <Download size={12} /> PDF
+                              </button>
+                              <button
+                                onClick={() => handleRepeatOrder(log.details)}
+                                style={{
+                                  background: 'rgba(59, 130, 246, 0.15)',
+                                  border: '1px solid #3b82f6',
+                                  color: '#3b82f6',
+                                  padding: '4px 8px',
+                                  fontSize: '0.75rem',
+                                  fontWeight: '700',
+                                  cursor: 'pointer',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '6px',
+                                  textTransform: 'uppercase',
+                                  fontFamily: 'sans-serif'
+                                }}
+                                title="Repetir este Pedido"
+                              >
+                                <RefreshCw size={12} /> Repetir
+                              </button>
+                            </div>
                           </div>
                         ) : (
                           log.details

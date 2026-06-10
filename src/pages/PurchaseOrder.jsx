@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Plus, Trash2, FileText, ShoppingBag, Hash, Tag, Package, LogOut, Download } from 'lucide-react';
 import toast from 'react-hot-toast';
@@ -16,6 +16,30 @@ const PurchaseOrder = () => {
     name: '',
     quantity: ''
   });
+
+  useEffect(() => {
+    const repeatData = localStorage.getItem('armazem_repeat_order');
+    if (repeatData) {
+      try {
+        const parsed = JSON.parse(repeatData);
+        if (parsed.storeName) setStoreName(parsed.storeName);
+        if (Array.isArray(parsed.items)) {
+          const formattedItems = parsed.items.map((it, idx) => ({
+            id: `${Date.now()}-${idx}`,
+            sku: it.sku,
+            name: it.name,
+            quantity: parseInt(it.quantity) || 1
+          }));
+          setItems(formattedItems);
+          toast.success('Pedido anterior carregado com sucesso!');
+        }
+      } catch (e) {
+        console.error('Erro ao carregar pedido repetido:', e);
+      } finally {
+        localStorage.removeItem('armazem_repeat_order');
+      }
+    }
+  }, []);
 
   const stores = [
     'LOJA TUDO POR 10 OU 20 - PRAIA GRANDE',

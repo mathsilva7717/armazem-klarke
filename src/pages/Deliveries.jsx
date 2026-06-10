@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut, Trash2 } from 'lucide-react';
+import { ArrowLeft, Truck, Package, Clock, CheckCircle, AlertTriangle, Download, RefreshCw, Search, LogOut, Trash2, Upload, FileText } from 'lucide-react';
 import toast from 'react-hot-toast';
 import jsPDF from 'jspdf';
 import api from '../api';
@@ -106,6 +106,40 @@ const Deliveries = () => {
         }
       }
     );
+  };
+
+  const handleFileUpload = async (e, orderId, type) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 10MB.');
+      return;
+    }
+
+    const loadToast = toast.loading(`Enviando ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'}...`);
+
+    const reader = new FileReader();
+    reader.readAsDataURL(file);
+    reader.onload = async () => {
+      try {
+        await api.put(`/orders/${orderId}/upload`, {
+          type,
+          fileData: reader.result,
+          fileName: file.name
+        });
+        toast.dismiss(loadToast);
+        toast.success(`${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} enviada com sucesso!`);
+        fetchOrders();
+      } catch (err) {
+        toast.dismiss(loadToast);
+        toast.error(err.response?.data?.error || 'Erro ao enviar arquivo.');
+      }
+    };
+    reader.onerror = () => {
+      toast.dismiss(loadToast);
+      toast.error('Erro ao ler o arquivo.');
+    };
   };
 
   const getStatusBadge = (status) => {
@@ -497,17 +531,18 @@ const Deliveries = () => {
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Responsáveis</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Produtos</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Status</th>
+                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Documentos</th>
                   <th style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Carregando pedidos de expedição...</td>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Carregando pedidos de expedição...</td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="7" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</td>
+                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</td>
                   </tr>
                 ) : (
                   filteredOrders.map(order => (
@@ -557,6 +592,95 @@ const Deliveries = () => {
                         </button>
                       </td>
                       <td data-label="Status" style={{ padding: '12px' }}>{getStatusBadge(order.status)}</td>
+                      <td data-label="Documentos" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                          {/* Nota Fiscal */}
+                          {order.invoice_path ? (
+                            <a
+                              href={`/api/uploads/${order.invoice_path}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: 'var(--primary)',
+                                fontSize: '0.75rem',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontWeight: 'bold'
+                              }}
+                              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                            >
+                              <FileText size={12} /> Nota Fiscal
+                            </a>
+                          ) : (
+                            <label style={{
+                              color: 'var(--text-muted)',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                            >
+                              <Upload size={12} /> Subir NF
+                              <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                style={{ display: 'none' }}
+                                onChange={(e) => handleFileUpload(e, order.id, 'invoice')}
+                              />
+                            </label>
+                          )}
+
+                          {/* Romaneio */}
+                          {order.packing_slip_path ? (
+                            <a
+                              href={`/api/uploads/${order.packing_slip_path}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              style={{
+                                color: 'var(--primary)',
+                                fontSize: '0.75rem',
+                                textDecoration: 'none',
+                                display: 'inline-flex',
+                                alignItems: 'center',
+                                gap: '4px',
+                                fontWeight: 'bold'
+                              }}
+                              onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
+                              onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
+                            >
+                              <FileText size={12} /> Romaneio
+                            </a>
+                          ) : (
+                            <label style={{
+                              color: 'var(--text-muted)',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px',
+                              transition: 'color 0.2s'
+                            }}
+                            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                            >
+                              <Upload size={12} /> Subir Romaneio
+                              <input
+                                type="file"
+                                accept=".pdf,image/*"
+                                style={{ display: 'none' }}
+                                onChange={(e) => handleFileUpload(e, order.id, 'packing_slip')}
+                              />
+                            </label>
+                          )}
+                        </div>
+                      </td>
                       <td data-label="Ações" style={{ padding: '12px', whiteSpace: 'nowrap', width: '220px' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                           <button

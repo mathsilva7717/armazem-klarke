@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const path = require('path');
+const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 require('dotenv').config();
@@ -10,7 +11,15 @@ const PORT = process.env.PORT || 3005; // Use port 3005 for the warehouse module
 const JWT_SECRET = process.env.JWT_SECRET || 'armazem-secret-key-123';
 
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
+app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
+
+// Ensure uploads directory exists on start
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
 
 // Cabeçalhos de Segurança (Contra Clickjacking, XSS, MIME Sniffing)
 app.use((req, res, next) => {
@@ -158,6 +167,17 @@ function initDb() {
     } catch (e) {
       // Já existe
     }
+
+    // Migração: Adicionar colunas de Nota Fiscal e Romaneio se não existirem
+    try {
+      db.prepare("ALTER TABLE purchase_orders ADD COLUMN invoice_path TEXT").run();
+      console.log('Coluna invoice_path adicionada à tabela purchase_orders.');
+    } catch (e) { }
+
+    try {
+      db.prepare("ALTER TABLE purchase_orders ADD COLUMN packing_slip_path TEXT").run();
+      console.log('Coluna packing_slip_path adicionada à tabela purchase_orders.');
+    } catch (e) { }
 
     // Order items table
     db.exec(`CREATE TABLE IF NOT EXISTS order_items (
@@ -631,6 +651,50 @@ app.delete('/api/orders/:id', authenticateToken, requireAdmin, (req, res) => {
 
     logAction(req.user.id, req.user.username, 'EXCLUIR_PEDIDO', `Excluiu o pedido de expedição #${id} da loja ${order.store_name}.`);
     res.json({ message: 'Pedido excluído com sucesso!' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Upload order files (Invoice or Packing Slip)
+app.put('/api/orders/:id/upload', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { type, fileData, fileName } = req.body;
+
+  if (!type || !fileData || !fileName) {
+    return res.status(400).json({ error: 'Dados de upload incompletos.' });
+  }
+
+  if (type !== 'invoice' && type !== 'packing_slip') {
+    return res.status(400).json({ error: 'Tipo de arquivo inválido.' });
+  }
+
+  try {
+    const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    const matches = fileData.match(/^data:(.+);base64,(.+)$/);
+    if (!matches) {
+      return res.status(400).json({ error: 'Formato de arquivo inválido.' });
+    }
+
+    const base64Data = matches[2];
+    const buffer = Buffer.from(base64Data, 'base64');
+
+    const ext = fileName.split('.').pop();
+    const savedName = `${type}-${id}-${Date.now()}.${ext}`;
+    const filePath = path.join(uploadsDir, savedName);
+    
+    fs.writeFileSync(filePath, buffer);
+
+    const columnName = type === 'invoice' ? 'invoice_path' : 'packing_slip_path';
+    db.prepare(`UPDATE purchase_orders SET ${columnName} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(savedName, id);
+
+    logAction(req.user.id, req.user.username, 'UPLOAD_DOC', `Enviou ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} para o pedido #${id}`);
+
+    res.json({ message: 'Arquivo enviado com sucesso!', fileName: savedName });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

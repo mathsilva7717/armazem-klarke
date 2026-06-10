@@ -119,6 +119,12 @@ const Logs = () => {
           color: '#22c55e',
           border: '1px solid #22c55e'
         };
+      case 'UPLOAD_DOC':
+        return {
+          background: 'rgba(6, 182, 212, 0.15)',
+          color: '#06b6d4',
+          border: '1px solid #06b6d4'
+        };
       default:
         return {
           background: 'rgba(255, 255, 255, 0.05)',
@@ -515,6 +521,7 @@ const Logs = () => {
                   <option value="ALTERAR_CARGO">Alterações de Cargo</option>
                   <option value="SALVAR_PRODUTO">Cadastro de Produtos</option>
                   <option value="GERAR_PEDIDO">Pedidos de Compra</option>
+                  <option value="UPLOAD_DOC">Uploads de Documentos</option>
                 </select>
               </div>
             </div>

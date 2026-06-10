@@ -189,6 +189,19 @@ function initDb() {
       FOREIGN KEY(order_id) REFERENCES purchase_orders(id)
     )`);
 
+    // Order status history table (for movement tracking)
+    db.exec(`CREATE TABLE IF NOT EXISTS order_status_history (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      order_id INTEGER,
+      old_status TEXT,
+      new_status TEXT,
+      user_id INTEGER,
+      username TEXT,
+      created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      FOREIGN KEY(order_id) REFERENCES purchase_orders(id),
+      FOREIGN KEY(user_id) REFERENCES users(id)
+    )`);
+
     // Migration: Migrate old 'GERAR_PEDIDO' logs into purchase_orders/order_items
     try {
       const existingCount = db.prepare("SELECT COUNT(*) as count FROM purchase_orders").get().count;
@@ -208,6 +221,10 @@ function initDb() {
                 const userId = log.user_id || 1;
                 const info = insertOrder.run(detailsObj.storeName, userId, createdAt, createdAt);
                 const newOrderId = info.lastInsertRowid;
+
+                // Pre-populate initial status history for migrated order
+                db.prepare("INSERT INTO order_status_history (order_id, old_status, new_status, user_id, username, created_at) VALUES (?, NULL, 'PENDENTE', ?, ?, ?)")
+                  .run(newOrderId, userId, log.username || 'Sistema', createdAt);
 
                 for (const it of detailsObj.items) {
                   insertItem.run(newOrderId, it.sku || '', it.name || '', it.quantity || 0);
@@ -538,6 +555,10 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 
     const orderId = executeTx();
 
+    // Record initial PENDENTE status history
+    db.prepare("INSERT INTO order_status_history (order_id, old_status, new_status, user_id, username) VALUES (?, NULL, 'PENDENTE', ?, ?)")
+      .run(orderId, userId, username);
+
     // Log internally for compatibility with Logs.jsx re-download button
     const detailsObj = {
       storeName,
@@ -574,6 +595,23 @@ app.get('/api/orders', authenticateToken, (req, res) => {
   }
 });
 
+// Get status/movement history for a specific order
+app.get('/api/orders/:id/history', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  try {
+    const rows = db.prepare(`
+      SELECT h.*, u.name as user_full_name
+      FROM order_status_history h
+      LEFT JOIN users u ON h.user_id = u.id
+      WHERE h.order_id = ?
+      ORDER BY h.created_at ASC
+    `).all(id);
+    res.json(rows);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Update order status and trigger automated inventory deductions on completion
 app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
   const { id } = req.params;
@@ -601,6 +639,10 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
     } else {
       db.prepare("UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id);
     }
+
+    // Record status transition in history
+    db.prepare("INSERT INTO order_status_history (order_id, old_status, new_status, user_id, username) VALUES (?, ?, ?, ?, ?)")
+      .run(id, oldStatus, status, req.user.id, req.user.name || req.user.username);
 
     // If completing the order, automatically log stock exit
     const isNowFinished = (status === 'FINALIZADO' || status === 'ERRO');
@@ -643,6 +685,8 @@ app.delete('/api/orders/:id', authenticateToken, requireAdmin, (req, res) => {
     }
 
     db.transaction(() => {
+      // Delete status history first
+      db.prepare("DELETE FROM order_status_history WHERE order_id = ?").run(id);
       // Delete order items first
       db.prepare("DELETE FROM order_items WHERE order_id = ?").run(id);
       // Delete purchase order

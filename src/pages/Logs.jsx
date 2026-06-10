@@ -65,8 +65,12 @@ const Logs = () => {
   };
 
   const formatDate = (dateStr) => {
+    if (!dateStr) return '';
     try {
-      const date = new Date(dateStr);
+      const parsedStr = (typeof dateStr === 'string' && !dateStr.endsWith('Z') && !dateStr.includes('T')) 
+        ? dateStr.replace(' ', 'T') + 'Z' 
+        : dateStr;
+      const date = new Date(parsedStr);
       const day = String(date.getDate()).padStart(2, '0');
       const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();

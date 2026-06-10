@@ -13,6 +13,24 @@ const Deliveries = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL');
   const [selectedOrder, setSelectedOrder] = useState(null);
+  const [confirmConfig, setConfirmConfig] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    onConfirm: null
+  });
+
+  const showConfirm = (title, message, onConfirm) => {
+    setConfirmConfig({
+      isOpen: true,
+      title,
+      message,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmConfig(prev => ({ ...prev, isOpen: false }));
+      }
+    });
+  };
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
   const canManageDeliveries = user.role === 'admin' || user.role === 'expedicao' || user.isAdmin === true;
@@ -74,17 +92,20 @@ const Deliveries = () => {
     }
   };
 
-  const handleDeleteOrder = async (id) => {
-    if (!window.confirm(`Tem certeza que deseja excluir o pedido #${id} definitivamente da fila de expedição?`)) {
-      return;
-    }
-    try {
-      await api.delete(`/orders/${id}`);
-      toast.success('Pedido excluído com sucesso.');
-      fetchOrders();
-    } catch (error) {
-      toast.error(error.response?.data?.error || 'Erro ao excluir o pedido.');
-    }
+  const handleDeleteOrder = (id) => {
+    showConfirm(
+      'Confirmar Exclusão',
+      `Tem certeza que deseja excluir o pedido #${id} definitivamente da fila de expedição?`,
+      async () => {
+        try {
+          await api.delete(`/orders/${id}`);
+          toast.success('Pedido excluído com sucesso.');
+          fetchOrders();
+        } catch (error) {
+          toast.error(error.response?.data?.error || 'Erro ao excluir o pedido.');
+        }
+      }
+    );
   };
 
   const getStatusBadge = (status) => {
@@ -778,6 +799,86 @@ const Deliveries = () => {
                 }}
               >
                 Fechar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Modal de Confirmação Customizado */}
+      {confirmConfig.isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            maxWidth: '400px',
+            width: '100%',
+            padding: '32px',
+            background: '#121212',
+            border: '1px solid var(--border)',
+            borderRadius: '0px',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)'
+          }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '900', textTransform: 'uppercase', marginBottom: '16px', color: 'var(--primary)', letterSpacing: '1px' }}>
+              {confirmConfig.title}
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginBottom: '28px', lineHeight: '1.5' }}>
+              {confirmConfig.message}
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => setConfirmConfig(prev => ({ ...prev, isOpen: false }))}
+                style={{
+                  background: 'transparent',
+                  color: 'var(--text-muted)',
+                  border: '1px solid var(--border)',
+                  padding: '10px 20px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => e.target.style.color = '#fff'}
+                onMouseLeave={(e) => e.target.style.color = 'var(--text-muted)'}
+              >
+                Cancelar
+              </button>
+              <button 
+                onClick={confirmConfig.onConfirm}
+                style={{
+                  background: 'rgba(239, 68, 68, 0.15)',
+                  border: '1px solid #ef4444',
+                  color: '#ef4444',
+                  padding: '10px 20px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  cursor: 'pointer',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px',
+                  transition: 'all 0.2s'
+                }}
+                onMouseEnter={(e) => {
+                  e.target.style.background = '#ef4444';
+                  e.target.style.color = '#fff';
+                }}
+                onMouseLeave={(e) => {
+                  e.target.style.background = 'rgba(239, 68, 68, 0.15)';
+                  e.target.style.color = '#ef4444';
+                }}
+              >
+                Confirmar
               </button>
             </div>
           </div>

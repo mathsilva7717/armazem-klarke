@@ -83,6 +83,7 @@ function initDb() {
       name TEXT,
       must_change_password INTEGER DEFAULT 1,
       is_admin INTEGER DEFAULT 0,
+      role TEXT DEFAULT 'operator',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )`);
 
@@ -90,6 +91,11 @@ function initDb() {
     try {
         db.prepare("ALTER TABLE users ADD COLUMN is_admin INTEGER DEFAULT 0").run();
         console.log('Coluna is_admin adicionada à tabela users.');
+    } catch (e) { }
+
+    try {
+        db.prepare("ALTER TABLE users ADD COLUMN role TEXT DEFAULT 'operator'").run();
+        console.log('Coluna role adicionada à tabela users.');
     } catch (e) { }
 
     // Stock Exits table
@@ -130,11 +136,11 @@ function initDb() {
     const row = db.prepare("SELECT * FROM users WHERE username = 'admin'").get();
     if (!row) {
         const hashedPassword = bcrypt.hashSync('senha123', 10);
-        db.prepare("INSERT INTO users (username, password, name, must_change_password, is_admin) VALUES (?, ?, ?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém', 0, 1);
+        db.prepare("INSERT INTO users (username, password, name, must_change_password, is_admin, role) VALUES (?, ?, ?, ?, ?, ?)").run('admin', hashedPassword, 'Administrador do Armazém', 0, 1, 'admin');
         console.log('Usuário admin padrão criado: admin / senha123');
     } else {
         // Garantir que o admin existente é admin
-        db.prepare("UPDATE users SET is_admin = 1 WHERE username = 'admin'").run();
+        db.prepare("UPDATE users SET is_admin = 1, role = 'admin' WHERE username = 'admin'").run();
     }
 
     // Audit logs table

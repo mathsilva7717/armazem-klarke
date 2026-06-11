@@ -281,13 +281,21 @@ const Logs = () => {
           doc.setTextColor(0, 0, 0);
           doc.text(emitterName, 25, 54);
 
+          // Info centro (Order ID!)
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Número do Pedido:", 95, 49);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(245, 158, 11);
+          doc.text(data.orderId ? `#${data.orderId}` : 'CÓPIA', 95, 54);
+
           // Info direita
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Data de Re-emissão:", 120, 49);
+          doc.text("Data de Re-emissão:", 145, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(currentDate, 120, 54);
+          doc.text(currentDate, 145, 54);
         } else {
           // Cabeçalho simplificado nas páginas seguintes
           doc.setFont('helvetica', 'bold');

@@ -35,7 +35,8 @@ const Deliveries = () => {
   };
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
-  const canManageDeliveries = user.role === 'admin' || user.role === 'expedicao' || user.isAdmin === true;
+  const userRole = user.role || (user.isAdmin ? 'admin' : 'operator');
+  const canManageDeliveries = userRole === 'admin' || userRole === 'expedicao' || userRole === 'estoque';
 
   const handleLogout = () => {
     localStorage.removeItem('armazem_auth');
@@ -46,6 +47,11 @@ const Deliveries = () => {
   };
 
   useEffect(() => {
+    const userRole = user.role || (user.isAdmin ? 'admin' : 'operator');
+    if (userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque') {
+      toast.error('Acesso negado. Você não tem permissão para acessar a tela de expedição.');
+      navigate('/');
+    }
     fetchOrders();
   }, []);
 
@@ -106,6 +112,12 @@ const Deliveries = () => {
   };
 
   const handleUpdateStatus = async (id, newStatus) => {
+    const userRole = user.role || (user.isAdmin ? 'admin' : 'operator');
+    if ((newStatus === 'FINALIZADO' || newStatus === 'ERRO') && userRole !== 'admin' && userRole !== 'estoque') {
+      toast.error('Acesso negado. Apenas usuários do cargo de estoque ou administradores podem finalizar pedidos.');
+      return;
+    }
+
     try {
       await api.put(`/orders/${id}/status`, { status: newStatus });
       toast.success(`Status atualizado para: ${newStatus}`);
@@ -338,10 +350,17 @@ const Deliveries = () => {
 
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Data de Emissão:", 120, 49);
+          doc.text("Número do Pedido:", 95, 49);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(245, 158, 11);
+          doc.text(`#${order.id}`, 95, 54);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Data de Emissão:", 145, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(orderDate, 120, 54);
+          doc.text(orderDate, 145, 54);
         } else {
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);
@@ -622,6 +641,13 @@ const Deliveries = () => {
                           {order.acceptor_name && (
                             <span style={{ fontSize: '0.8rem' }}>
                               <strong style={{ color: '#3b82f6' }}>Aceito por:</strong> {order.acceptor_name}
+                            </span>
+                          )}
+                          {order.finalizer_name && (
+                            <span style={{ fontSize: '0.8rem' }}>
+                              <strong style={{ color: order.status === 'FINALIZADO' ? '#22c55e' : '#ef4444' }}>
+                                {order.status === 'FINALIZADO' ? 'Conferido por:' : 'Divergido por:'}
+                              </strong> {order.finalizer_name}
                             </span>
                           )}
                         </div>

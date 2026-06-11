@@ -146,12 +146,16 @@ const Users = () => {
 
     let newRole = 'operator';
     if (currentRole === 'operator') newRole = 'expedicao';
-    else if (currentRole === 'expedicao') newRole = 'admin';
+    else if (currentRole === 'expedicao') newRole = 'estoque';
+    else if (currentRole === 'estoque') newRole = 'gerencia';
+    else if (currentRole === 'gerencia') newRole = 'admin';
     else if (currentRole === 'admin') newRole = 'operator';
 
     const roleNames = {
       operator: 'Operador',
       expedicao: 'Expedição',
+      estoque: 'Estoque',
+      gerencia: 'Gerência',
       admin: 'Administrador'
     };
 
@@ -289,6 +293,8 @@ const Users = () => {
                 >
                   <option value="operator">Operador (Padrão)</option>
                   <option value="expedicao">Expedição (Visualização + Aceitar Pedidos)</option>
+                  <option value="estoque">Estoque (Visualização + Finalizar Pedidos)</option>
+                  <option value="gerencia">Gerência (Criar Pedidos de Compra)</option>
                   <option value="admin">Administrador (Controle Total)</option>
                 </select>
               </div>
@@ -360,19 +366,31 @@ const Users = () => {
                           textTransform: 'uppercase',
                           background: (u.role === 'admin' || (!u.role && u.is_admin))
                             ? 'rgba(245, 158, 11, 0.15)'
-                            : (u.role === 'expedicao')
+                            : u.role === 'expedicao'
                               ? 'rgba(59, 130, 246, 0.15)'
-                              : 'rgba(255, 255, 255, 0.05)',
+                              : u.role === 'estoque'
+                                ? 'rgba(34, 197, 94, 0.15)'
+                                : u.role === 'gerencia'
+                                  ? 'rgba(168, 85, 247, 0.15)'
+                                  : 'rgba(255, 255, 255, 0.05)',
                           color: (u.role === 'admin' || (!u.role && u.is_admin))
                             ? 'var(--primary)'
-                            : (u.role === 'expedicao')
+                            : u.role === 'expedicao'
                               ? '#3b82f6'
-                              : 'var(--text-muted)',
+                              : u.role === 'estoque'
+                                ? '#22c55e'
+                                : u.role === 'gerencia'
+                                  ? '#a855f7'
+                                  : 'var(--text-muted)',
                           border: (u.role === 'admin' || (!u.role && u.is_admin))
                             ? '1px solid var(--primary)'
-                            : (u.role === 'expedicao')
+                            : u.role === 'expedicao'
                               ? '1px solid #3b82f6'
-                              : '1px solid var(--border)',
+                              : u.role === 'estoque'
+                                ? '1px solid #22c55e'
+                                : u.role === 'gerencia'
+                                  ? '1px solid #a855f7'
+                                  : '1px solid var(--border)',
                           cursor: u.username === 'admin' ? 'default' : 'pointer',
                           userSelect: 'none',
                           transition: 'all 0.2s ease',
@@ -385,7 +403,11 @@ const Users = () => {
                               ? 'rgba(245, 158, 11, 0.3)'
                               : r === 'expedicao'
                                 ? 'rgba(59, 130, 246, 0.3)'
-                                : 'rgba(255, 255, 255, 0.15)';
+                                : r === 'estoque'
+                                  ? 'rgba(34, 197, 94, 0.3)'
+                                  : r === 'gerencia'
+                                    ? 'rgba(168, 85, 247, 0.3)'
+                                    : 'rgba(255, 255, 255, 0.15)';
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -395,11 +417,23 @@ const Users = () => {
                               ? 'rgba(245, 158, 11, 0.15)'
                               : r === 'expedicao'
                                 ? 'rgba(59, 130, 246, 0.15)'
-                                : 'rgba(255, 255, 255, 0.05)';
+                                : r === 'estoque'
+                                  ? 'rgba(34, 197, 94, 0.15)'
+                                  : r === 'gerencia'
+                                    ? 'rgba(168, 85, 247, 0.15)'
+                                    : 'rgba(255, 255, 255, 0.05)';
                           }
                         }}
                       >
-                        {(u.role === 'admin' || (!u.role && u.is_admin)) ? 'Administrador' : (u.role === 'expedicao') ? 'Expedição' : 'Operador'}
+                        {u.role === 'admin' || (!u.role && u.is_admin) 
+                          ? 'Administrador' 
+                          : u.role === 'expedicao' 
+                            ? 'Expedição' 
+                            : u.role === 'estoque' 
+                              ? 'Estoque' 
+                              : u.role === 'gerencia' 
+                                ? 'Gerência' 
+                                : 'Operador'}
                       </span>
                     </td>
                     <td style={{ padding: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>

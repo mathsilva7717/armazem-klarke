@@ -17,6 +17,11 @@ const PurchaseOrder = () => {
     name: '',
     quantity: ''
   });
+  const [successModal, setSuccessModal] = useState({
+    isOpen: false,
+    orderId: '',
+    storeName: ''
+  });
 
   useEffect(() => {
     const repeatData = localStorage.getItem('armazem_repeat_order');
@@ -61,6 +66,14 @@ const PurchaseOrder = () => {
       }
     }
   }, []);
+
+  useEffect(() => {
+    const userRole = user.role || (user.isAdmin ? 'admin' : 'operator');
+    if (userRole !== 'admin' && userRole !== 'gerencia') {
+      toast.error('Acesso negado. Você não tem permissão para criar pedidos de compra.');
+      navigate('/');
+    }
+  }, [user, navigate]);
 
   const stores = [
     'LOJA TUDO 10 OU 20 - PRAIA GRANDE',
@@ -138,13 +151,21 @@ const PurchaseOrder = () => {
       return;
     }
 
-    const loadToast = toast.loading('Gerando PDF...');
+    const loadToast = toast.loading('Registrando pedido e gerando PDF...');
 
     try {
-      // 1. Tentar carregar loja.png
+      // 1. Salvar primeiro no banco de dados para obter o ID do pedido
+      const response = await api.post('/orders', { 
+        storeName, 
+        items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity })),
+        emittedByUsername: orderEmitter ? orderEmitter.username : user.username
+      });
+      const orderId = response.data.id;
+
+      // 2. Tentar carregar loja.png
       const logoBase64 = await getBase64ImageFromUrl('/loja.png');
 
-      // 2. Inicializar jsPDF (A4, Retrato)
+      // 3. Inicializar jsPDF (A4, Retrato)
       const doc = new jsPDF('p', 'mm', 'a4');
 
       // Cores do Tema Industrial (Klarke Amber / Slate)
@@ -215,13 +236,21 @@ const PurchaseOrder = () => {
           doc.setTextColor(0, 0, 0);
           doc.text(orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Administrador'), 25, 54);
 
+          // Info centro (Order ID!)
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Número do Pedido:", 95, 49);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(245, 158, 11);
+          doc.text(`#${orderId}`, 95, 54);
+
           // Info direita
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Data de Emissão:", 120, 49);
+          doc.text("Data de Emissão:", 145, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(currentDate, 120, 54);
+          doc.text(currentDate, 145, 54);
         } else {
           // Cabeçalho simplificado nas páginas seguintes
           doc.setFont('helvetica', 'bold');
@@ -261,15 +290,12 @@ const PurchaseOrder = () => {
       doc.setTextColor(0, 0, 0);
 
       items.forEach((item, index) => {
-        // Cada linha tem 9mm. Se estourar o limite da página (240mm), quebra de página.
         if (currentY + 9 > 240) {
-          // Desenha bordas da tabela na página atual antes de mudar
           doc.setDrawColor(200, 200, 200);
-          doc.line(20, currentY, 190, currentY); // Linha inferior
-          doc.line(20, pageTableStartY, 20, currentY); // Linha lateral esquerda
-          doc.line(190, pageTableStartY, 190, currentY); // Linha lateral direita
+          doc.line(20, currentY, 190, currentY);
+          doc.line(20, pageTableStartY, 20, currentY);
+          doc.line(190, pageTableStartY, 190, currentY);
 
-          // Adiciona nova página
           doc.addPage();
           pageNum++;
           drawHeader(pageNum);
@@ -282,24 +308,20 @@ const PurchaseOrder = () => {
           doc.setTextColor(0, 0, 0);
         }
 
-        // Cor de fundo alternada (efeito zebra)
         if (index % 2 === 1) {
           doc.setFillColor(248, 248, 248);
           doc.rect(20, currentY, 170, 9, 'F');
         }
         
-        // Borda inferior discreta
         doc.setDrawColor(240, 240, 240);
         doc.line(20, currentY + 9, 190, currentY + 9);
 
-        // Conteúdos
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(0, 0, 0);
         doc.text(item.sku, 25, currentY + 6);
 
         doc.setFont('helvetica', 'normal');
-        // Truncar descrição longa para não quebrar o layout da tabela
         const itemDesc = item.name.length > 50 ? item.name.substring(0, 47) + '...' : item.name;
         doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
 
@@ -309,13 +331,11 @@ const PurchaseOrder = () => {
         currentY += 9;
       });
 
-      // Desenha bordas finais da tabela no final da listagem
       doc.setDrawColor(200, 200, 200);
-      doc.line(20, currentY, 190, currentY); // Linha inferior
-      doc.line(20, pageTableStartY, 20, currentY); // Linha lateral esquerda
-      doc.line(190, pageTableStartY, 190, currentY); // Linha lateral direita
+      doc.line(20, currentY, 190, currentY);
+      doc.line(20, pageTableStartY, 20, currentY);
+      doc.line(190, pageTableStartY, 190, currentY);
 
-      // 6. Campo de Assinatura
       const signatureY = Math.max(240, currentY + 15);
       doc.setDrawColor(180, 180, 180);
       doc.setLineWidth(0.4);
@@ -330,7 +350,6 @@ const PurchaseOrder = () => {
       doc.setFontSize(8);
       doc.text(orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Operador do Armazém'), 105, signatureY + 10, { align: 'center' });
 
-      // 7. Rodapé Administrativo
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
@@ -339,22 +358,16 @@ const PurchaseOrder = () => {
       // Abrir PDF em uma nova aba
       doc.output('dataurlnewwindow');
 
-      try {
-        await api.post('/orders', { 
-          storeName, 
-          items,
-          emittedByUsername: orderEmitter ? orderEmitter.username : user.username
-        });
-      } catch (logErr) {
-        console.warn("Erro ao registrar pedido:", logErr);
-      }
-
       toast.dismiss(loadToast);
-      toast.success('Pedido de Compra gerado com sucesso!');
+      setSuccessModal({
+        isOpen: true,
+        orderId,
+        storeName
+      });
     } catch (err) {
       console.error(err);
       toast.dismiss(loadToast);
-      toast.error('Erro ao gerar o arquivo PDF.');
+      toast.error(err.response?.data?.error || 'Erro ao processar e salvar o pedido.');
     }
   };
 
@@ -557,6 +570,59 @@ const PurchaseOrder = () => {
           </button>
         </section>
       </main>
+      {/* Modal de Sucesso Customizado */}
+      {successModal.isOpen && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          background: 'rgba(0, 0, 0, 0.85)',
+          backdropFilter: 'blur(8px)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 10000,
+          padding: '20px'
+        }}>
+          <div className="glass-card animate-fade-in" style={{
+            maxWidth: '450px',
+            width: '100%',
+            padding: '32px',
+            background: '#121212',
+            border: '1px solid var(--border)',
+            borderRadius: '0px',
+            boxShadow: '0 20px 25px -5px rgb(0 0 0 / 0.5), 0 8px 10px -6px rgb(0 0 0 / 0.5)'
+          }}>
+            <h3 style={{ fontSize: '1.05rem', fontWeight: '900', textTransform: 'uppercase', marginBottom: '16px', color: 'var(--primary)', letterSpacing: '1px' }}>
+              Pedido Emitido com Sucesso
+            </h3>
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-main)', marginBottom: '28px', lineHeight: '1.5' }}>
+              O Pedido de Compra <strong style={{ color: 'var(--primary)' }}>#{successModal.orderId}</strong> para a loja <strong style={{ color: '#fff' }}>{successModal.storeName}</strong> foi registrado no sistema e o PDF foi gerado em uma nova aba.
+            </p>
+            <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+              <button 
+                onClick={() => {
+                  setItems([]);
+                  setStoreName('');
+                  setSuccessModal({ isOpen: false, orderId: '', storeName: '' });
+                }}
+                className="btn-primary"
+                style={{
+                  padding: '10px 24px',
+                  fontWeight: '700',
+                  textTransform: 'uppercase',
+                  fontSize: '0.75rem',
+                  letterSpacing: '1px'
+                }}
+              >
+                Confirmar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

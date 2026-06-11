@@ -8,6 +8,13 @@ const Dashboard = () => {
   const [isSupportOpen, setIsSupportOpen] = useState(false);
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
 
+  const getGreeting = () => {
+    const hours = new Date().getHours();
+    if (hours >= 5 && hours < 12) return 'Bom dia';
+    if (hours >= 12 && hours < 18) return 'Boa tarde';
+    return 'Boa noite';
+  };
+
   const handleLogout = () => {
     localStorage.removeItem('armazem_auth');
     localStorage.removeItem('armazem_token');
@@ -81,8 +88,20 @@ const Dashboard = () => {
       return;
     }
 
-    if ((item.path === '/users' || item.path === '/logs') && !user.isAdmin) {
+    const userRole = user.role || (user.isAdmin ? 'admin' : 'operator');
+
+    if ((item.path === '/users' || item.path === '/logs') && !user.isAdmin && userRole !== 'admin') {
       toast.error('Somente usuários administradores têm acesso.');
+      return;
+    }
+
+    if (item.path === '/deliveries' && userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque') {
+      toast.error('Acesso negado. Você não tem permissão para acessar a tela de expedição.');
+      return;
+    }
+
+    if (item.path === '/purchase-order' && userRole !== 'admin' && userRole !== 'gerencia') {
+      toast.error('Acesso negado. Você não tem permissão para criar pedidos de compra.');
       return;
     }
 
@@ -99,7 +118,8 @@ const Dashboard = () => {
         margin: '0 auto 48px',
         width: '100%',
         padding: '24px 0',
-        borderBottom: '2px solid var(--primary)'
+        borderBottom: '2px solid var(--primary)',
+        position: 'relative'
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <img 
@@ -132,10 +152,26 @@ const Dashboard = () => {
           </div>
         </div>
 
+        <div style={{ 
+          position: 'absolute', 
+          left: '50%', 
+          transform: 'translateX(-50%)', 
+          textAlign: 'center' 
+        }}>
+          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>
+            {getGreeting()}
+          </p>
+          <h2 style={{ fontSize: '1rem', fontWeight: '900', color: 'var(--primary)', textTransform: 'uppercase' }}>
+            {user.name || user.username}
+          </h2>
+        </div>
+
         <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
           <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>Logado como</p>
-            <p style={{ fontSize: '0.85rem', color: 'var(--primary)', fontWeight: '700' }}>{user.name || user.username}</p>
+            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>Cargo</p>
+            <p style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700', textTransform: 'uppercase' }}>
+              {user.role === 'admin' ? 'Administrador' : user.role === 'expedicao' ? 'Expedição' : user.role === 'estoque' ? 'Estoque' : user.role === 'gerencia' ? 'Gerência' : 'Operador'}
+            </p>
           </div>
           <button 
             onClick={handleLogout} 

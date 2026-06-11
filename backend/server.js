@@ -162,14 +162,24 @@ function initDb() {
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
       accepted_by INTEGER,
+      finalized_by INTEGER,
       FOREIGN KEY(emitted_by) REFERENCES users(id),
-      FOREIGN KEY(accepted_by) REFERENCES users(id)
+      FOREIGN KEY(accepted_by) REFERENCES users(id),
+      FOREIGN KEY(finalized_by) REFERENCES users(id)
     )`);
 
     // Migração: Adicionar accepted_by caso não exista
     try {
       db.prepare("ALTER TABLE purchase_orders ADD COLUMN accepted_by INTEGER").run();
       console.log('Coluna accepted_by adicionada à tabela purchase_orders.');
+    } catch (e) {
+      // Já existe
+    }
+
+    // Migração: Adicionar finalized_by caso não exista
+    try {
+      db.prepare("ALTER TABLE purchase_orders ADD COLUMN finalized_by INTEGER").run();
+      console.log('Coluna finalized_by adicionada à tabela purchase_orders.');
     } catch (e) {
       // Já existe
     }
@@ -370,7 +380,7 @@ app.post('/api/exits', authenticateToken, (req, res) => {
 app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
   const { username, password, name, role } = req.body;
   const hashedPassword = bcrypt.hashSync(password, 10);
-  const validRoles = ['admin', 'operator', 'expedicao'];
+  const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque'];
   const userRole = validRoles.includes(role) ? role : 'operator';
   const isAdminVal = userRole === 'admin' ? 1 : 0;
   
@@ -440,7 +450,7 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
     return res.status(403).json({ error: 'O cargo do administrador principal não pode ser alterado.' });
   }
 
-  const validRoles = ['admin', 'operator', 'expedicao'];
+  const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque'];
   if (!validRoles.includes(role)) {
     return res.status(400).json({ error: 'Cargo inválido.' });
   }
@@ -567,6 +577,7 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 
     // Log internally for compatibility with Logs.jsx re-download button
     const detailsObj = {
+      orderId,
       storeName,
       items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity })),
       emittedByUsername: username
@@ -583,10 +594,11 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 app.get('/api/orders', authenticateToken, (req, res) => {
   try {
     const orders = db.prepare(`
-      SELECT o.*, u.name as emitter_name, a.name as acceptor_name
+      SELECT o.*, u.name as emitter_name, a.name as acceptor_name, f.name as finalizer_name
       FROM purchase_orders o
       JOIN users u ON o.emitted_by = u.id
       LEFT JOIN users a ON o.accepted_by = a.id
+      LEFT JOIN users f ON o.finalized_by = f.id
       ORDER BY o.created_at DESC
     `).all();
 
@@ -639,9 +651,25 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
       return res.json({ message: 'Status já atualizado.', status });
     }
 
-    // Update status and set accepted_by when transitioning to PREPARANDO
+    const userRole = req.user.role;
+    const isAdmin = req.user.isAdmin;
+
+    // Check permission for finishing (FINALIZADO / ERRO)
+    if ((status === 'FINALIZADO' || status === 'ERRO') && userRole !== 'estoque' && userRole !== 'admin' && !isAdmin) {
+      return res.status(403).json({ error: 'Acesso negado. Apenas usuários do cargo de estoque ou administradores podem finalizar pedidos.' });
+    }
+
+    // Check permission for other transitions
+    const allowedRolesForFulfillment = ['admin', 'estoque', 'expedicao'];
+    if (!allowedRolesForFulfillment.includes(userRole) && !isAdmin) {
+      return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para alterar o status dos pedidos.' });
+    }
+
+    // Update status and set accepted_by / finalized_by when transitioning
     if (status === 'PREPARANDO') {
       db.prepare("UPDATE purchase_orders SET status = ?, accepted_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, req.user.id, id);
+    } else if (status === 'FINALIZADO' || status === 'ERRO') {
+      db.prepare("UPDATE purchase_orders SET status = ?, finalized_by = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, req.user.id, id);
     } else {
       db.prepare("UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(status, id);
     }

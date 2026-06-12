@@ -15,6 +15,9 @@ const Deliveries = () => {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [orderHistory, setOrderHistory] = useState([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [showItems, setShowItems] = useState(false);
+  const [isEditingNfe, setIsEditingNfe] = useState(false);
+  const [editingNfeKey, setEditingNfeKey] = useState('');
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: '',
@@ -62,6 +65,9 @@ const Deliveries = () => {
   useEffect(() => {
     if (selectedOrder) {
       fetchOrderHistory(selectedOrder.id);
+      setShowItems(false);
+      setIsEditingNfe(false);
+      setEditingNfeKey('');
     } else {
       setOrderHistory([]);
     }
@@ -77,6 +83,23 @@ const Deliveries = () => {
       toast.error('Erro ao carregar o histórico de movimentação.');
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const handleSaveNfeKey = async () => {
+    if (editingNfeKey && editingNfeKey.length !== 44) {
+      toast.error('A chave de acesso da NF-e deve conter exatamente 44 números.');
+      return;
+    }
+
+    try {
+      const response = await api.put(`/orders/${selectedOrder.id}/nfe-key`, { nfeKey: editingNfeKey || null });
+      toast.success(response.data.message);
+      setSelectedOrder(prev => ({ ...prev, nfe_key: editingNfeKey || null }));
+      setOrders(prev => prev.map(o => o.id === selectedOrder.id ? { ...o, nfe_key: editingNfeKey || null } : o));
+      setIsEditingNfe(false);
+    } catch (error) {
+      toast.error(error.response?.data?.error || 'Erro ao salvar chave de acesso.');
     }
   };
 
@@ -1009,39 +1032,196 @@ const Deliveries = () => {
             </div>
             {/* Modal Body */}
             <div style={{ overflowY: 'auto', flex: 1, paddingRight: '8px', marginBottom: '20px' }}>
+              {/* NF-e Section */}
+              <div style={{
+                background: 'rgba(255,255,255,0.02)',
+                border: '1px solid var(--border)',
+                padding: '16px',
+                marginBottom: '20px',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '12px'
+              }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span style={{ fontSize: '0.8rem', fontWeight: 'bold', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                    Chave de Acesso NF-e (44 dígitos)
+                  </span>
+                  {selectedOrder.nfe_key && (
+                    <button
+                      onClick={() => {
+                        navigator.clipboard.writeText(selectedOrder.nfe_key);
+                        toast.success('Chave de acesso copiada!');
+                      }}
+                      style={{
+                        background: 'var(--primary)',
+                        border: 'none',
+                        color: '#000',
+                        padding: '4px 10px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        fontSize: '0.7rem',
+                        textTransform: 'uppercase',
+                        borderRadius: '0px'
+                      }}
+                    >
+                      Copiar Chave
+                    </button>
+                  )}
+                </div>
+
+                {selectedOrder.nfe_key ? (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '10px' }}>
+                    <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#fff', letterSpacing: '0.5px', wordBreak: 'break-all' }}>
+                      {selectedOrder.nfe_key}
+                    </span>
+                    <button
+                      onClick={() => {
+                        setEditingNfeKey(selectedOrder.nfe_key);
+                        setIsEditingNfe(true);
+                      }}
+                      style={{
+                        background: 'transparent',
+                        border: 'none',
+                        color: 'var(--primary)',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        fontWeight: 'bold',
+                        textDecoration: 'underline'
+                      }}
+                    >
+                      Editar
+                    </button>
+                  </div>
+                ) : (
+                  <div>
+                    {isEditingNfe ? (
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <input
+                          type="text"
+                          maxLength={44}
+                          placeholder="Cole a chave de 44 dígitos aqui..."
+                          value={editingNfeKey}
+                          onChange={(e) => setEditingNfeKey(e.target.value.replace(/\D/g, ''))}
+                          style={{
+                            flex: 1,
+                            padding: '8px 12px',
+                            background: '#000',
+                            border: '1px solid var(--border)',
+                            color: '#fff',
+                            fontSize: '0.8rem',
+                            outline: 'none',
+                            fontFamily: 'monospace'
+                          }}
+                        />
+                        <button
+                          onClick={handleSaveNfeKey}
+                          style={{
+                            background: 'var(--primary)',
+                            border: 'none',
+                            color: '#000',
+                            padding: '8px 14px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          Salvar
+                        </button>
+                        <button
+                          onClick={() => setIsEditingNfe(false)}
+                          style={{
+                            background: 'transparent',
+                            border: '1px solid var(--border)',
+                            color: '#fff',
+                            padding: '8px 14px',
+                            fontWeight: 'bold',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem'
+                          }}
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
+                          Nenhuma chave de acesso vinculada.
+                        </span>
+                        <button
+                          onClick={() => {
+                            setEditingNfeKey('');
+                            setIsEditingNfe(true);
+                          }}
+                          style={{
+                            background: 'transparent',
+                            border: 'none',
+                            color: 'var(--primary)',
+                            cursor: 'pointer',
+                            fontSize: '0.75rem',
+                            fontWeight: 'bold',
+                            textDecoration: 'underline'
+                          }}
+                        >
+                          Vincular Chave
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {/* Loja & Produtos Header */}
               <div style={{ 
                 display: 'flex', 
                 justifyContent: 'space-between', 
-                marginBottom: '20px', 
+                alignItems: 'center',
+                marginBottom: '16px', 
                 fontSize: '0.85rem', 
                 background: 'rgba(255,255,255,0.03)',
                 padding: '12px',
                 border: '1px solid var(--border)'
               }}>
-                <span>Loja: <strong style={{ color: 'var(--primary)' }}>{selectedOrder.store_name}</strong></span>
-                <span>Total de Itens: <strong style={{ color: 'var(--primary)' }}>{selectedOrder.items?.reduce((sum, item) => sum + item.quantity, 0)}</strong></span>
+                <div>Loja: <strong style={{ color: 'var(--primary)' }}>{selectedOrder.store_name}</strong></div>
+                <button
+                  onClick={() => setShowItems(!showItems)}
+                  style={{
+                    background: 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                    color: 'var(--primary)',
+                    padding: '6px 12px',
+                    cursor: 'pointer',
+                    fontSize: '0.75rem',
+                    fontWeight: 'bold',
+                    borderRadius: '0px'
+                  }}
+                >
+                  {showItems ? 'Minimizar Itens' : `Ver Itens (${selectedOrder.items?.reduce((sum, item) => sum + item.quantity, 0)} un)`}
+                </button>
               </div>
-              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
-                <thead>
-                  <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
-                    <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '25%' }}>SKU</th>
-                    <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '55%' }}>Nome do Produto</th>
-                    <th style={{ padding: '10px 8px', color: 'var(--text-muted)', textAlign: 'right', width: '20%' }}>Qtd</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {selectedOrder.items?.map((it, idx) => (
-                    <tr key={it.id} style={{ 
-                      borderBottom: '1px solid rgba(255,255,255,0.05)',
-                      background: idx % 2 === 1 ? 'rgba(255,255,255,0.01)' : 'transparent'
-                    }}>
-                      <td style={{ padding: '10px 8px', fontWeight: 'bold', color: 'var(--primary)' }}>{it.sku}</td>
-                      <td style={{ padding: '10px 8px', textTransform: 'uppercase' }}>{it.name}</td>
-                      <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 'bold' }}>{it.quantity}</td>
+
+              {showItems && (
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginBottom: '20px' }}>
+                  <thead>
+                    <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '25%' }}>SKU</th>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '55%' }}>Nome do Produto</th>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', textAlign: 'right', width: '20%' }}>Qtd</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {selectedOrder.items?.map((it, idx) => (
+                      <tr key={it.id} style={{ 
+                        borderBottom: '1px solid rgba(255,255,255,0.05)',
+                        background: idx % 2 === 1 ? 'rgba(255,255,255,0.01)' : 'transparent'
+                      }}>
+                        <td style={{ padding: '10px 8px', fontWeight: 'bold', color: 'var(--primary)' }}>{it.sku}</td>
+                        <td style={{ padding: '10px 8px', textTransform: 'uppercase' }}>{it.name}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 'bold' }}>{it.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
 
               <h4 style={{ 
                 textTransform: 'uppercase', 

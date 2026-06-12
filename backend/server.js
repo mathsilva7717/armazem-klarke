@@ -195,6 +195,11 @@ function initDb() {
       console.log('Coluna packing_slip_path adicionada à tabela purchase_orders.');
     } catch (e) { }
 
+    try {
+      db.prepare("ALTER TABLE purchase_orders ADD COLUMN nfe_key TEXT").run();
+      console.log('Coluna nfe_key adicionada à tabela purchase_orders.');
+    } catch (e) { }
+
     // Order items table
     db.exec(`CREATE TABLE IF NOT EXISTS order_items (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -770,9 +775,40 @@ app.put('/api/orders/:id/upload', authenticateToken, (req, res) => {
     const columnName = type === 'invoice' ? 'invoice_path' : 'packing_slip_path';
     db.prepare(`UPDATE purchase_orders SET ${columnName} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(savedName, id);
 
+    // Auto-extract 44-digit NFe key from fileName if type is invoice and key exists in filename
+    if (type === 'invoice') {
+      const keyMatch = fileName.match(/\b\d{44}\b/) || fileName.match(/\d{44}/);
+      if (keyMatch) {
+        db.prepare("UPDATE purchase_orders SET nfe_key = ? WHERE id = ?").run(keyMatch[0], id);
+      }
+    }
+
     logAction(req.user.id, req.user.username, 'UPLOAD_DOC', `Enviou ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} para o pedido #${id}`);
 
     res.json({ message: 'Arquivo enviado com sucesso!', fileName: savedName });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Manual update/save of NFe access key
+app.put('/api/orders/:id/nfe-key', authenticateToken, (req, res) => {
+  const { id } = req.params;
+  const { nfeKey } = req.body;
+
+  if (nfeKey && !/^\d{44}$/.test(nfeKey)) {
+    return res.status(400).json({ error: 'A chave de acesso da NF-e deve conter exatamente 44 números.' });
+  }
+
+  try {
+    const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
+    if (!order) {
+      return res.status(404).json({ error: 'Pedido não encontrado.' });
+    }
+
+    db.prepare("UPDATE purchase_orders SET nfe_key = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(nfeKey || null, id);
+    logAction(req.user.id, req.user.username, 'UPDATE_NFE_KEY', `Atualizou chave NF-e do pedido #${id} para ${nfeKey || 'vazio'}`);
+    res.json({ message: 'Chave atualizada com sucesso!', nfe_key: nfeKey });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

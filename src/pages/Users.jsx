@@ -340,7 +340,7 @@ const Users = () => {
             <UsersIcon size={20} color="var(--primary)" /> Operadores Ativos
           </h3>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="hide-scrollbar" style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.9rem' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)' }}>

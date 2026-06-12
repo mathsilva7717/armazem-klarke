@@ -580,7 +580,7 @@ const Logs = () => {
             <Terminal size={20} color="var(--primary)" /> Histórico de Auditoria ({filteredLogs.length})
           </h3>
 
-          <div style={{ overflowX: 'auto' }}>
+          <div className="hide-scrollbar" style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', fontFamily: 'monospace' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>

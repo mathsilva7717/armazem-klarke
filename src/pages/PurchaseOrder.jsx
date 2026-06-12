@@ -527,7 +527,7 @@ const PurchaseOrder = () => {
                 Nenhum produto adicionado ainda.
               </div>
             ) : (
-              <div style={{ overflowX: 'auto', border: '1px solid var(--border)' }}>
+              <div className="hide-scrollbar" style={{ overflowX: 'auto', border: '1px solid var(--border)' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
                   <thead>
                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', background: 'rgba(255,255,255,0.02)' }}>

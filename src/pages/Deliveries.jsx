@@ -1245,10 +1245,6 @@ const Deliveries = () => {
                 <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '12px' }}>
                   Carregando histórico...
                 </div>
-              ) : orderHistory.length === 0 ? (
-                <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem', textAlign: 'center', padding: '12px' }}>
-                  Nenhum histórico de status registrado.
-                </div>
               ) : (
                 <div style={{ 
                   display: 'flex', 
@@ -1260,12 +1256,13 @@ const Deliveries = () => {
                   borderLeft: '1px solid var(--border)',
                   marginTop: '16px'
                 }}>
-                  {orderHistory.map((hist) => {
-                    const parsedTime = (typeof hist.created_at === 'string' && !hist.created_at.endsWith('Z') && !hist.created_at.includes('T'))
-                      ? hist.created_at.replace(' ', 'T') + 'Z'
-                      : hist.created_at;
+                  {/* Virtual creation event */}
+                  {(() => {
+                    const parsedTime = (typeof selectedOrder.created_at === 'string' && !selectedOrder.created_at.endsWith('Z') && !selectedOrder.created_at.includes('T'))
+                      ? selectedOrder.created_at.replace(' ', 'T') + 'Z'
+                      : selectedOrder.created_at;
                     const date = new Date(parsedTime);
-                    const formattedDate = date.toLocaleString('pt-BR', {
+                    const formattedCreatedDate = date.toLocaleString('pt-BR', {
                       day: '2-digit',
                       month: '2-digit',
                       year: 'numeric',
@@ -1273,10 +1270,8 @@ const Deliveries = () => {
                       minute: '2-digit',
                       second: '2-digit'
                     });
-                    
                     return (
-                      <div key={hist.id} style={{ position: 'relative' }}>
-                        {/* Timeline dot */}
+                      <div style={{ position: 'relative' }}>
                         <div style={{
                           position: 'absolute',
                           left: '-31px',
@@ -1284,24 +1279,70 @@ const Deliveries = () => {
                           width: '12px',
                           height: '12px',
                           borderRadius: '0%',
-                          background: hist.new_status === 'FINALIZADO' ? '#22c55e' : hist.new_status === 'ERRO' ? '#ef4444' : 'var(--primary)',
+                          background: 'var(--primary)',
                           border: '2px solid #121212',
                           boxShadow: '0 0 0 2px var(--border)'
                         }} />
                         <div style={{ fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
                           <span style={{ fontWeight: 'bold', color: '#fff' }}>
-                            {getStatusName(hist.old_status)} ➔ {getStatusName(hist.new_status)}
+                            Pedido Criado
                           </span>
                           <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                            ({formattedDate})
+                            ({formattedCreatedDate})
                           </span>
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
-                          Operador: <strong style={{ color: '#fff' }}>{hist.user_full_name || hist.username || 'Sistema'}</strong>
+                          Emissor: <strong style={{ color: '#fff' }}>{selectedOrder.emitter_name || 'Sistema'}</strong>
                         </div>
                       </div>
                     );
-                  })}
+                  })()}
+
+                  {/* Other transitions from database */}
+                  {orderHistory
+                    .filter(hist => hist.old_status !== null && hist.old_status !== undefined && hist.old_status !== '')
+                    .map((hist) => {
+                      const parsedTime = (typeof hist.created_at === 'string' && !hist.created_at.endsWith('Z') && !hist.created_at.includes('T'))
+                        ? hist.created_at.replace(' ', 'T') + 'Z'
+                        : hist.created_at;
+                      const date = new Date(parsedTime);
+                      const formattedDate = date.toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit',
+                        second: '2-digit'
+                      });
+                      
+                      return (
+                        <div key={hist.id} style={{ position: 'relative' }}>
+                          {/* Timeline dot */}
+                          <div style={{
+                            position: 'absolute',
+                            left: '-31px',
+                            top: '2px',
+                            width: '12px',
+                            height: '12px',
+                            borderRadius: '0%',
+                            background: hist.new_status === 'FINALIZADO' ? '#22c55e' : hist.new_status === 'ERRO' ? '#ef4444' : 'var(--primary)',
+                            border: '2px solid #121212',
+                            boxShadow: '0 0 0 2px var(--border)'
+                          }} />
+                          <div style={{ fontSize: '0.8rem', display: 'flex', flexWrap: 'wrap', gap: '8px', alignItems: 'center' }}>
+                            <span style={{ fontWeight: 'bold', color: '#fff' }}>
+                              {getStatusName(hist.old_status)} ➔ {getStatusName(hist.new_status)}
+                            </span>
+                            <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>
+                              ({formattedDate})
+                            </span>
+                          </div>
+                          <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '2px' }}>
+                            Operador: <strong style={{ color: '#fff' }}>{hist.user_full_name || hist.username || 'Sistema'}</strong>
+                          </div>
+                        </div>
+                      );
+                    })}
                 </div>
               )}
             </div>

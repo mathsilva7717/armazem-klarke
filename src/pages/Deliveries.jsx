@@ -18,6 +18,7 @@ const Deliveries = () => {
   const [showItems, setShowItems] = useState(false);
   const [isEditingNfe, setIsEditingNfe] = useState(false);
   const [editingNfeKey, setEditingNfeKey] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
   const [confirmConfig, setConfirmConfig] = useState({
     isOpen: false,
     title: '',
@@ -60,6 +61,7 @@ const Deliveries = () => {
 
   useEffect(() => {
     filterOrders();
+    setCurrentPage(1);
   }, [orders, searchTerm, statusFilter]);
 
   useEffect(() => {
@@ -507,6 +509,12 @@ const Deliveries = () => {
     }
   };
 
+  const ITEMS_PER_PAGE = 10;
+  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
+  const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <header style={{ 
@@ -651,7 +659,7 @@ const Deliveries = () => {
                     <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</td>
                   </tr>
                 ) : (
-                  filteredOrders.map(order => (
+                  currentOrders.map(order => (
                     <tr key={order.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.3)' }}>
                       <td data-label="ID" style={{ padding: '12px', fontWeight: 'bold', color: 'var(--primary)' }}>#{order.id}</td>
                       <td data-label="Data/Hora" style={{ padding: '12px', color: 'var(--text-muted)' }}>{formatDate(order.created_at)}</td>
@@ -973,6 +981,120 @@ const Deliveries = () => {
               </tbody>
             </table>
           </div>
+
+          {/* Controls for pagination */}
+          {totalPages > 1 && (
+            <div style={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              marginTop: '24px',
+              paddingTop: '20px',
+              borderTop: '1px solid var(--border)'
+            }}>
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
+                PÁGINA {currentPage} DE {totalPages} ({filteredOrders.length} PEDIDOS NO TOTAL)
+              </span>
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button
+                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                  disabled={currentPage === 1}
+                  style={{
+                    background: currentPage === 1 ? 'transparent' : 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid var(--border)',
+                    color: currentPage === 1 ? 'var(--text-muted)' : 'var(--primary)',
+                    padding: '8px 16px',
+                    fontWeight: 'bold',
+                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    borderRadius: '0px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPage !== 1) {
+                      e.currentTarget.style.background = 'var(--primary)';
+                      e.currentTarget.style.color = '#000';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentPage !== 1) {
+                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
+                      e.currentTarget.style.color = 'var(--primary)';
+                    }
+                  }}
+                >
+                  Anterior
+                </button>
+                
+                {/* Page number buttons */}
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
+                  const isCurrent = pageNum === currentPage;
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      style={{
+                        background: isCurrent ? 'var(--primary)' : 'transparent',
+                        border: '1px solid var(--border)',
+                        color: isCurrent ? '#000' : '#fff',
+                        width: '32px',
+                        height: '32px',
+                        fontWeight: 'bold',
+                        cursor: 'pointer',
+                        fontSize: '0.75rem',
+                        borderRadius: '0px',
+                        transition: 'all 0.2s'
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!isCurrent) {
+                          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!isCurrent) {
+                          e.currentTarget.style.background = 'transparent';
+                        }
+                      }}
+                    >
+                      {pageNum}
+                    </button>
+                  );
+                })}
+
+                <button
+                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                  disabled={currentPage === totalPages}
+                  style={{
+                    background: currentPage === totalPages ? 'transparent' : 'rgba(245, 158, 11, 0.1)',
+                    border: '1px solid var(--border)',
+                    color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--primary)',
+                    padding: '8px 16px',
+                    fontWeight: 'bold',
+                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                    fontSize: '0.75rem',
+                    textTransform: 'uppercase',
+                    borderRadius: '0px',
+                    transition: 'all 0.2s'
+                  }}
+                  onMouseEnter={(e) => {
+                    if (currentPage !== totalPages) {
+                      e.currentTarget.style.background = 'var(--primary)';
+                      e.currentTarget.style.color = '#000';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (currentPage !== totalPages) {
+                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
+                      e.currentTarget.style.color = 'var(--primary)';
+                    }
+                  }}
+                >
+                  Próximo
+                </button>
+              </div>
+            </div>
+          )}
         </section>
       </main>
 

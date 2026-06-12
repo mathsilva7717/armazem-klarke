@@ -88,7 +88,7 @@ const Dashboard = () => {
       return;
     }
 
-    const userRole = user.role || (user.isAdmin ? 'admin' : 'operator');
+    const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
 
     if ((item.path === '/users' || item.path === '/logs') && !user.isAdmin && userRole !== 'admin') {
       toast.error('Somente usuários administradores têm acesso.');
@@ -170,7 +170,7 @@ const Dashboard = () => {
           <div style={{ textAlign: 'right' }}>
             <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>Cargo</p>
             <p style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700', textTransform: 'uppercase' }}>
-              {user.role === 'admin' ? 'Administrador' : user.role === 'expedicao' ? 'Expedição' : user.role === 'estoque' ? 'Estoque' : user.role === 'gerencia' ? 'Gerência' : 'Operador'}
+              {(user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'Administrador' : user.role === 'expedicao' ? 'Expedição' : user.role === 'estoque' ? 'Estoque' : user.role === 'gerencia' ? 'Gerência' : 'Operador'}
             </p>
           </div>
           <button 

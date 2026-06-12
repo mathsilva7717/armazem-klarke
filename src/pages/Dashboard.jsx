@@ -158,10 +158,10 @@ const Dashboard = () => {
           transform: 'translateX(-50%)', 
           textAlign: 'center' 
         }}>
-          <p style={{ fontSize: '0.65rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px' }}>
+          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px', marginBottom: '4px' }}>
             {getGreeting()}
           </p>
-          <h2 style={{ fontSize: '1rem', fontWeight: '900', color: 'var(--primary)', textTransform: 'uppercase' }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--primary)', textTransform: 'uppercase' }}>
             {user.name || user.username}
           </h2>
         </div>

@@ -175,8 +175,8 @@ const Deliveries = () => {
     const file = e.target.files[0];
     if (!file) return;
 
-    if (file.size > 10 * 1024 * 1024) {
-      toast.error('O arquivo deve ter no máximo 10MB.');
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 50MB.');
       return;
     }
 

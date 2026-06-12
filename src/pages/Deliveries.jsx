@@ -1074,27 +1074,29 @@ const Deliveries = () => {
                     <span style={{ fontFamily: 'monospace', fontSize: '0.85rem', color: '#fff', letterSpacing: '0.5px', wordBreak: 'break-all' }}>
                       {selectedOrder.nfe_key}
                     </span>
-                    <button
-                      onClick={() => {
-                        setEditingNfeKey(selectedOrder.nfe_key);
-                        setIsEditingNfe(true);
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--primary)',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem',
-                        fontWeight: 'bold',
-                        textDecoration: 'underline'
-                      }}
-                    >
-                      Editar
-                    </button>
+                    {userRole === 'admin' && (
+                      <button
+                        onClick={() => {
+                          setEditingNfeKey(selectedOrder.nfe_key);
+                          setIsEditingNfe(true);
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: 'none',
+                          color: 'var(--primary)',
+                          cursor: 'pointer',
+                          fontSize: '0.75rem',
+                          fontWeight: 'bold',
+                          textDecoration: 'underline'
+                        }}
+                      >
+                        Editar
+                      </button>
+                    )}
                   </div>
                 ) : (
                   <div>
-                    {isEditingNfe ? (
+                    {isEditingNfe && userRole === 'admin' ? (
                       <div style={{ display: 'flex', gap: '8px' }}>
                         <input
                           type="text"
@@ -1147,23 +1149,25 @@ const Deliveries = () => {
                         <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
                           Nenhuma chave de acesso vinculada.
                         </span>
-                        <button
-                          onClick={() => {
-                            setEditingNfeKey('');
-                            setIsEditingNfe(true);
-                          }}
-                          style={{
-                            background: 'transparent',
-                            border: 'none',
-                            color: 'var(--primary)',
-                            cursor: 'pointer',
-                            fontSize: '0.75rem',
-                            fontWeight: 'bold',
-                            textDecoration: 'underline'
-                          }}
-                        >
-                          Vincular Chave
-                        </button>
+                        {userRole === 'admin' && (
+                          <button
+                            onClick={() => {
+                              setEditingNfeKey('');
+                              setIsEditingNfe(true);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--primary)',
+                              cursor: 'pointer',
+                              fontSize: '0.75rem',
+                              fontWeight: 'bold',
+                              textDecoration: 'underline'
+                            }}
+                          >
+                            Vincular Chave
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

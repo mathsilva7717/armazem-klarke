@@ -638,7 +638,7 @@ const Deliveries = () => {
             <Truck size={20} color="var(--primary)" /> Fila de Expedição ({filteredOrders.length})
           </h3>
 
-          <div className="hide-scrollbar" style={{ overflowX: 'auto' }}>
+          <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
               <thead>
                 <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
@@ -839,7 +839,7 @@ const Deliveries = () => {
                           )}
                         </div>
                       </td>
-                      <td data-label="Ações" style={{ padding: '12px', whiteSpace: 'nowrap', width: '220px' }}>
+                      <td data-label="Ações" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
                           <button
                             onClick={() => handleDownloadPDF(order)}

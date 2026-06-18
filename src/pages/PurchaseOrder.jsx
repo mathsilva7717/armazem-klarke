@@ -275,8 +275,8 @@ const PurchaseOrder = () => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(255, 255, 255);
-        doc.text("SKU", 25, y + 5.5);
-        doc.text("NOME DO PRODUTO", 65, y + 5.5);
+        doc.text("SKU", 22, y + 5.5);
+        doc.text("NOME DO PRODUTO", 45, y + 5.5);
         doc.text("QUANTIDADE", 145, y + 5.5);
         doc.text("UNIDADE", 172, y + 5.5);
       };
@@ -323,11 +323,11 @@ const PurchaseOrder = () => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(0, 0, 0);
-        doc.text(item.sku, 25, currentY + 6);
+        doc.text(item.sku, 22, currentY + 6);
 
         doc.setFont('helvetica', 'normal');
         const itemDesc = item.name.length > 50 ? item.name.substring(0, 47) + '...' : item.name;
-        doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
+        doc.text(itemDesc.toUpperCase(), 45, currentY + 6);
 
         doc.setFont('helvetica', 'bold');
         doc.text(item.quantity.toString(), 145, currentY + 6);

@@ -40,7 +40,7 @@ const Deliveries = () => {
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
   const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-  const canManageDeliveries = userRole === 'admin' || userRole === 'expedicao' || userRole === 'estoque';
+  const canManageDeliveries = userRole === 'admin' || userRole === 'expedicao' || userRole === 'estoque' || userRole === 'gerencia';
 
   const handleLogout = () => {
     localStorage.removeItem('armazem_auth');
@@ -52,7 +52,7 @@ const Deliveries = () => {
 
   useEffect(() => {
     const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-    if (userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque') {
+    if (userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque' && userRole !== 'gerencia') {
       toast.error('Acesso negado. Você não tem permissão para acessar a tela de expedição.');
       navigate('/');
     }
@@ -138,8 +138,9 @@ const Deliveries = () => {
 
   const handleUpdateStatus = async (id, newStatus) => {
     const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-    if ((newStatus === 'FINALIZADO' || newStatus === 'ERRO') && userRole !== 'admin' && userRole !== 'estoque') {
-      toast.error('Acesso negado. Apenas usuários do cargo de estoque ou administradores podem finalizar pedidos.');
+    const allowedRolesForFinishing = ['admin', 'estoque', 'expedicao', 'gerencia'];
+    if ((newStatus === 'FINALIZADO' || newStatus === 'ERRO') && !allowedRolesForFinishing.includes(userRole)) {
+      toast.error('Acesso negado. Apenas usuários dos cargos de estoque, expedição, gerência ou administradores podem finalizar pedidos.');
       return;
     }
 
@@ -403,7 +404,8 @@ const Deliveries = () => {
         doc.setTextColor(255, 255, 255);
         doc.text("SKU", 25, y + 5.5);
         doc.text("NOME DO PRODUTO", 65, y + 5.5);
-        doc.text("QUANTIDADE", 165, y + 5.5);
+        doc.text("QUANTIDADE", 145, y + 5.5);
+        doc.text("UNIDADE", 172, y + 5.5);
       };
 
       let pageNum = 1;
@@ -452,7 +454,8 @@ const Deliveries = () => {
         doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
 
         doc.setFont('helvetica', 'bold');
-        doc.text(item.quantity.toString(), 165, currentY + 6);
+        doc.text(item.quantity.toString(), 145, currentY + 6);
+        doc.text((item.unit || 'UN').toUpperCase(), 172, currentY + 6);
 
         currentY += 9;
       });
@@ -1329,9 +1332,10 @@ const Deliveries = () => {
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem', marginBottom: '20px' }}>
                   <thead>
                     <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
-                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '25%' }}>SKU</th>
-                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '55%' }}>Nome do Produto</th>
-                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', textAlign: 'right', width: '20%' }}>Qtd</th>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '20%' }}>SKU</th>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', width: '50%' }}>Nome do Produto</th>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', textAlign: 'right', width: '15%' }}>Qtd</th>
+                      <th style={{ padding: '10px 8px', color: 'var(--text-muted)', textAlign: 'center', width: '15%' }}>Unid</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1343,6 +1347,7 @@ const Deliveries = () => {
                         <td style={{ padding: '10px 8px', fontWeight: 'bold', color: 'var(--primary)' }}>{it.sku}</td>
                         <td style={{ padding: '10px 8px', textTransform: 'uppercase' }}>{it.name}</td>
                         <td style={{ padding: '10px 8px', textAlign: 'right', fontWeight: 'bold' }}>{it.quantity}</td>
+                        <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 'bold' }}>{(it.unit || 'UN').toUpperCase()}</td>
                       </tr>
                     ))}
                   </tbody>

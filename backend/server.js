@@ -207,8 +207,15 @@ function initDb() {
       sku TEXT,
       name TEXT,
       quantity INTEGER,
+      unit TEXT DEFAULT 'UN',
       FOREIGN KEY(order_id) REFERENCES purchase_orders(id)
     )`);
+
+    // Migração: Adiciona unit se não existir na tabela order_items
+    try {
+        db.prepare("ALTER TABLE order_items ADD COLUMN unit TEXT DEFAULT 'UN'").run();
+        console.log('Coluna unit adicionada à tabela order_items.');
+    } catch (e) { }
 
     // Order status history table (for movement tracking)
     db.exec(`CREATE TABLE IF NOT EXISTS order_status_history (
@@ -561,7 +568,7 @@ app.post('/api/orders', authenticateToken, (req, res) => {
   }
 
   const insertOrder = db.prepare("INSERT INTO purchase_orders (store_name, emitted_by, status) VALUES (?, ?, ?)");
-  const insertItem = db.prepare("INSERT INTO order_items (order_id, sku, name, quantity) VALUES (?, ?, ?, ?)");
+  const insertItem = db.prepare("INSERT INTO order_items (order_id, sku, name, quantity, unit) VALUES (?, ?, ?, ?, ?)");
 
   try {
     const executeTx = db.transaction(() => {
@@ -569,7 +576,7 @@ app.post('/api/orders', authenticateToken, (req, res) => {
       const orderId = info.lastInsertRowid;
 
       for (const item of items) {
-        insertItem.run(orderId, item.sku, item.name, item.quantity);
+        insertItem.run(orderId, item.sku, item.name, item.quantity, item.unit || 'UN');
       }
       return orderId;
     });
@@ -584,7 +591,7 @@ app.post('/api/orders', authenticateToken, (req, res) => {
     const detailsObj = {
       orderId,
       storeName,
-      items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity })),
+      items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity, unit: it.unit || 'UN' })),
       emittedByUsername: username
     };
     logAction(userId, username, 'GERAR_PEDIDO', JSON.stringify(detailsObj));
@@ -660,12 +667,13 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
     const isAdmin = req.user.isAdmin;
 
     // Check permission for finishing (FINALIZADO / ERRO)
-    if ((status === 'FINALIZADO' || status === 'ERRO') && userRole !== 'estoque' && userRole !== 'admin' && !isAdmin) {
-      return res.status(403).json({ error: 'Acesso negado. Apenas usuários do cargo de estoque ou administradores podem finalizar pedidos.' });
+    const allowedRolesForFinishing = ['admin', 'estoque', 'expedicao', 'gerencia'];
+    if ((status === 'FINALIZADO' || status === 'ERRO') && !allowedRolesForFinishing.includes(userRole) && !isAdmin) {
+      return res.status(403).json({ error: 'Acesso negado. Apenas usuários dos cargos de estoque, expedição, gerência ou administradores podem finalizar pedidos.' });
     }
 
     // Check permission for other transitions
-    const allowedRolesForFulfillment = ['admin', 'estoque', 'expedicao'];
+    const allowedRolesForFulfillment = ['admin', 'estoque', 'expedicao', 'gerencia'];
     if (!allowedRolesForFulfillment.includes(userRole) && !isAdmin) {
       return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para alterar o status dos pedidos.' });
     }

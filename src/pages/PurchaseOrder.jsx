@@ -15,7 +15,8 @@ const PurchaseOrder = () => {
   const [formData, setFormData] = useState({
     sku: '',
     name: '',
-    quantity: ''
+    quantity: '',
+    unit: 'UN'
   });
   const [successModal, setSuccessModal] = useState({
     isOpen: false,
@@ -42,7 +43,8 @@ const PurchaseOrder = () => {
             id: `${Date.now()}-${idx}`,
             sku: it.sku,
             name: it.name,
-            quantity: parseInt(it.quantity) || 1
+            quantity: parseInt(it.quantity) || 1,
+            unit: it.unit || 'UN'
           }));
           setItems(formattedItems);
           toast.success('Pedido anterior carregado com sucesso!');
@@ -110,11 +112,12 @@ const PurchaseOrder = () => {
       id: Date.now().toString(),
       sku: formData.sku,
       name: formData.name,
-      quantity: qty
+      quantity: qty,
+      unit: formData.unit || 'UN'
     };
 
     setItems(prev => [...prev, newItem]);
-    setFormData({ sku: '', name: '', quantity: '' });
+    setFormData({ sku: '', name: '', quantity: '', unit: 'UN' });
     toast.success('Produto adicionado ao pedido!');
   };
 
@@ -157,7 +160,7 @@ const PurchaseOrder = () => {
       // 1. Salvar primeiro no banco de dados para obter o ID do pedido
       const response = await api.post('/orders', { 
         storeName, 
-        items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity })),
+        items: items.map(it => ({ sku: it.sku, name: it.name, quantity: it.quantity, unit: it.unit || 'UN' })),
         emittedByUsername: orderEmitter ? orderEmitter.username : user.username
       });
       const orderId = response.data.id;
@@ -274,7 +277,8 @@ const PurchaseOrder = () => {
         doc.setTextColor(255, 255, 255);
         doc.text("SKU", 25, y + 5.5);
         doc.text("NOME DO PRODUTO", 65, y + 5.5);
-        doc.text("QUANTIDADE", 165, y + 5.5);
+        doc.text("QUANTIDADE", 145, y + 5.5);
+        doc.text("UNIDADE", 172, y + 5.5);
       };
 
       let pageNum = 1;
@@ -326,7 +330,8 @@ const PurchaseOrder = () => {
         doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
 
         doc.setFont('helvetica', 'bold');
-        doc.text(item.quantity.toString(), 165, currentY + 6);
+        doc.text(item.quantity.toString(), 145, currentY + 6);
+        doc.text((item.unit || 'UN').toUpperCase(), 172, currentY + 6);
 
         currentY += 9;
       });
@@ -456,16 +461,40 @@ const PurchaseOrder = () => {
               />
             </div>
 
-            <div className="input-group">
-              <label><Package size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Quantidade</label>
-              <input 
-                name="quantity"
-                type="number" 
-                placeholder="Ex: 5" 
-                value={formData.quantity}
-                onChange={handleInputChange}
-                required
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+              <div className="input-group">
+                <label><Package size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Quantidade</label>
+                <input 
+                  name="quantity"
+                  type="number" 
+                  placeholder="Ex: 5" 
+                  value={formData.quantity}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+              <div className="input-group">
+                <label><Tag size={14} style={{ verticalAlign: 'middle', marginRight: '6px' }} /> Unidade</label>
+                <select
+                  name="unit"
+                  value={formData.unit || 'UN'}
+                  onChange={handleInputChange}
+                  style={{
+                    width: '100%',
+                    padding: '12px 16px',
+                    background: '#000',
+                    border: '1px solid var(--border)',
+                    color: 'white',
+                    outline: 'none',
+                    transition: 'border-color 0.2s ease',
+                    cursor: 'pointer'
+                  }}
+                >
+                  <option value="UN">UN (Unidade)</option>
+                  <option value="CX">CX (Caixa)</option>
+                </select>
+              </div>
             </div>
 
             <button type="submit" className="btn-primary" style={{ width: '100%' }}>
@@ -534,6 +563,7 @@ const PurchaseOrder = () => {
                       <th style={{ padding: '10px', color: 'var(--text-muted)' }}>SKU</th>
                       <th style={{ padding: '10px', color: 'var(--text-muted)' }}>Produto</th>
                       <th style={{ padding: '10px', color: 'var(--text-muted)', textAlign: 'right' }}>Qtd</th>
+                      <th style={{ padding: '10px', color: 'var(--text-muted)', textAlign: 'center' }}>Unid</th>
                       <th style={{ padding: '10px' }}></th>
                     </tr>
                   </thead>
@@ -543,6 +573,7 @@ const PurchaseOrder = () => {
                         <td style={{ padding: '10px', fontWeight: '700' }}>{item.sku}</td>
                         <td style={{ padding: '10px' }}>{item.name.toUpperCase()}</td>
                         <td style={{ padding: '10px', textAlign: 'right', fontWeight: '700', color: 'var(--primary)' }}>{item.quantity}</td>
+                        <td style={{ padding: '10px', textAlign: 'center', fontWeight: '600' }}>{(item.unit || 'UN').toUpperCase()}</td>
                         <td style={{ padding: '10px', textAlign: 'right' }}>
                           <button 
                             onClick={() => handleRemoveItem(item.id)}

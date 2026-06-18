@@ -89,7 +89,8 @@ const Labels = () => {
       
       // Construtor compatível com todas as versões do jsPDF
       const doc = new jsPDF('l', 'mm', [82, 25]);
-      const totalRows = Math.ceil(quantity / 2);
+      const qty = Number(quantity) || 1;
+      const totalRows = Math.ceil(qty / 2);
 
       for (let i = 0; i < totalRows; i++) {
         if (i > 0) doc.addPage([82, 25], 'l');
@@ -103,7 +104,7 @@ const Labels = () => {
         doc.addImage(imgData, 'PNG', 6.2, 6.5, 24, 14);                
         
         // Etiqueta 2 (Direita) - se houver saldo
-        if ((i * 2 + 1) < quantity) {
+        if ((i * 2 + 1) < qty) {
           doc.text(displayName.toUpperCase(), 58.2, 4.5, { align: 'center' });
           doc.addImage(imgData, 'PNG', 46.2, 6.5, 24, 14);
         }

@@ -75,7 +75,8 @@ const DefectLabels = () => {
     try {
       const logoBase64 = await getBase64ImageFromUrl('/loja.png');
       const doc = new jsPDF('l', 'mm', [82, 25]);
-      const totalPages = Math.ceil(quantity / 2);
+      const qty = Number(quantity) || 1;
+      const totalPages = Math.ceil(qty / 2);
 
       for (let i = 0; i < totalPages; i++) {
         if (i > 0) doc.addPage([82, 25], 'l');
@@ -127,7 +128,7 @@ const DefectLabels = () => {
         });
 
         // --- ETIQUETA 2 (DIREITA - Centro em X = 61.5) ---
-        if ((i * 2 + 1) < quantity) {
+        if ((i * 2 + 1) < qty) {
           // 1. Marca d'água da loja (em preto sólido)
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(5.5);

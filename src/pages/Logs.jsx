@@ -319,7 +319,8 @@ const Logs = () => {
         doc.setTextColor(255, 255, 255);
         doc.text("SKU", 25, y + 5.5);
         doc.text("NOME DO PRODUTO", 65, y + 5.5);
-        doc.text("QUANTIDADE", 165, y + 5.5);
+        doc.text("QUANTIDADE", 145, y + 5.5);
+        doc.text("UNIDADE", 172, y + 5.5);
       };
 
       let pageNum = 1;
@@ -377,7 +378,8 @@ const Logs = () => {
         doc.text(itemDesc.toUpperCase(), 65, currentY + 6);
 
         doc.setFont('helvetica', 'bold');
-        doc.text(item.quantity.toString(), 165, currentY + 6);
+        doc.text(item.quantity.toString(), 145, currentY + 6);
+        doc.text((item.unit || 'UN').toUpperCase(), 172, currentY + 6);
 
         currentY += 9;
       });

@@ -905,6 +905,90 @@ app.get('/api/products/:query', authenticateToken, (req, res) => {
   }
 });
 
+// Undo action from system logs (Admin only)
+app.post('/api/logs/:id/undo', authenticateToken, requireAdmin, (req, res) => {
+  const { id } = req.params;
+  
+  try {
+    const log = db.prepare("SELECT * FROM audit_logs WHERE id = ?").get(id);
+    if (!log) {
+      return res.status(404).json({ error: 'Log não encontrado.' });
+    }
+
+    if (log.action !== 'STATUS_PEDIDO' && log.action !== 'EXPEDICAO_PEDIDO') {
+      return res.status(400).json({ error: 'Esta ação não pode ser desfeita.' });
+    }
+
+    const match = log.details.match(/pedido\s*#\s*(\d+)/i);
+    if (!match) {
+      return res.status(400).json({ error: 'Não foi possível identificar o ID do pedido nesta ação.' });
+    }
+
+    const orderId = parseInt(match[1]);
+
+    // Encontra a transição correspondente de status mais recente desse pedido
+    const history = db.prepare(`
+      SELECT * FROM order_status_history 
+      WHERE order_id = ? 
+      ORDER BY created_at DESC 
+      LIMIT 1
+    `).get(orderId);
+
+    if (!history) {
+      return res.status(400).json({ error: 'Histórico de status do pedido não encontrado.' });
+    }
+
+    const oldStatus = history.old_status;
+    const newStatus = history.new_status;
+
+    if (!oldStatus) {
+      return res.status(400).json({ error: 'O pedido está em seu status inicial e não pode ser revertido.' });
+    }
+
+    // Reverte o status na tabela purchase_orders
+    db.prepare("UPDATE purchase_orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?").run(oldStatus, orderId);
+
+    // Se o status desfeito era FINALIZADO ou ERRO (que desconta estoque),
+    // devemos excluir as saídas de estoque geradas automaticamente naquele momento
+    if (newStatus === 'FINALIZADO' || newStatus === 'ERRO') {
+      const items = db.prepare("SELECT sku, quantity FROM order_items WHERE order_id = ?").all(orderId);
+      const orderData = db.prepare("SELECT store_name FROM purchase_orders WHERE id = ?").get(orderId);
+
+      if (items.length > 0 && orderData) {
+        // Obter o timestamp da transição
+        const histTimeStr = history.created_at.includes('T') ? history.created_at : history.created_at.replace(' ', 'T') + 'Z';
+        const histTime = new Date(histTimeStr).getTime();
+        
+        // Janela de tempo de 60 segundos antes/depois da transição
+        const toSqliteDateTime = (date) => date.toISOString().replace('T', ' ').substring(0, 19);
+        const startTime = toSqliteDateTime(new Date(histTime - 60000));
+        const endTime = toSqliteDateTime(new Date(histTime + 60000));
+
+        for (const item of items) {
+          db.prepare(`
+            DELETE FROM stock_exits 
+            WHERE sku = ? 
+              AND quantity = ? 
+              AND store = ? 
+              AND created_at BETWEEN ? AND ?
+          `).run(item.sku, item.quantity, orderData.store_name, startTime, endTime);
+        }
+      }
+    }
+
+    // Registra a reversão no histórico de status
+    db.prepare("INSERT INTO order_status_history (order_id, old_status, new_status, user_id, username) VALUES (?, ?, ?, ?, ?)")
+      .run(orderId, newStatus, oldStatus, req.user.id, `Desfazer (por ${req.user.name || req.user.username})`);
+
+    // Registra o log da reversão em audit_logs
+    logAction(req.user.id, req.user.username, 'DESFAZER_ACAO', `Desfez alteração de status do pedido #${orderId} (revertido de ${newStatus} para ${oldStatus})`);
+
+    res.json({ message: `Ação desfeita! Pedido #${orderId} revertido para o status ${oldStatus}.` });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // Get all audit logs (Only for admins)
 app.get('/api/logs', authenticateToken, requireAdmin, (req, res) => {
   try {

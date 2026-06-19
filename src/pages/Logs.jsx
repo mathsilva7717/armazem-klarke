@@ -449,6 +449,22 @@ const Logs = () => {
     }
   };
 
+  const handleUndoAction = async (logId) => {
+    const confirm = window.confirm("Deseja realmente desfazer esta alteração de status do pedido?");
+    if (!confirm) return;
+
+    const loadToast = toast.loading('Processando reversão...');
+    try {
+      const res = await api.post(`/logs/${logId}/undo`);
+      toast.dismiss(loadToast);
+      toast.success(res.data.message);
+      fetchLogs();
+    } catch (err) {
+      toast.dismiss(loadToast);
+      toast.error(err.response?.data?.error || 'Erro ao desfazer a ação.');
+    }
+  };
+
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
       <header style={{ 
@@ -678,6 +694,30 @@ const Logs = () => {
                                 <RefreshCw size={12} /> Repetir
                               </button>
                             </div>
+                          </div>
+                        ) : (log.action === 'STATUS_PEDIDO' || log.action === 'EXPEDICAO_PEDIDO') ? (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '12px' }}>
+                            <span>{log.details}</span>
+                            <button
+                              onClick={() => handleUndoAction(log.id)}
+                              style={{
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                border: '1px solid #ef4444',
+                                color: '#ef4444',
+                                padding: '4px 8px',
+                                fontSize: '0.75rem',
+                                fontWeight: '700',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                textTransform: 'uppercase',
+                                fontFamily: 'sans-serif'
+                              }}
+                              title="Desfazer esta alteração de status"
+                            >
+                              Desfazer
+                            </button>
                           </div>
                         ) : (
                           log.details

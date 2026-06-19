@@ -39,13 +39,19 @@ const PurchaseOrder = () => {
           setStoreName(normalizedStore);
         }
         if (Array.isArray(parsed.items)) {
-          const formattedItems = parsed.items.map((it, idx) => ({
-            id: `${Date.now()}-${idx}`,
-            sku: it.sku,
-            name: it.name,
-            quantity: parseInt(it.quantity) || 1,
-            unit: it.unit || 'UN'
-          }));
+          const formattedItems = parsed.items.map((it, idx) => {
+            let finalUnit = it.unit || 'UN';
+            if (it.name && /\(CX\)/i.test(it.name)) {
+              finalUnit = 'CX';
+            }
+            return {
+              id: `${Date.now()}-${idx}`,
+              sku: it.sku,
+              name: it.name,
+              quantity: parseInt(it.quantity) || 1,
+              unit: finalUnit
+            };
+          });
           setItems(formattedItems);
           toast.success('Pedido anterior carregado com sucesso!');
         }
@@ -331,7 +337,12 @@ const PurchaseOrder = () => {
 
         doc.setFont('helvetica', 'bold');
         doc.text(item.quantity.toString(), 145, currentY + 6);
-        doc.text((item.unit || 'UN').toUpperCase(), 172, currentY + 6);
+        
+        let finalUnit = (item.unit || 'UN').toUpperCase();
+        if (item.name && /\(CX\)/i.test(item.name)) {
+          finalUnit = 'CX';
+        }
+        doc.text(finalUnit, 172, currentY + 6);
 
         currentY += 9;
       });

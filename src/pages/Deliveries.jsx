@@ -455,7 +455,12 @@ const Deliveries = () => {
 
         doc.setFont('helvetica', 'bold');
         doc.text(item.quantity.toString(), 145, currentY + 6);
-        doc.text((item.unit || 'UN').toUpperCase(), 172, currentY + 6);
+        
+        let finalUnit = (item.unit || 'UN').toUpperCase();
+        if (item.name && /\(CX\)/i.test(item.name)) {
+          finalUnit = 'CX';
+        }
+        doc.text(finalUnit, 172, currentY + 6);
 
         currentY += 9;
       });

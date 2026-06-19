@@ -576,7 +576,11 @@ app.post('/api/orders', authenticateToken, (req, res) => {
       const orderId = info.lastInsertRowid;
 
       for (const item of items) {
-        insertItem.run(orderId, item.sku, item.name, item.quantity, item.unit || 'UN');
+        let finalUnit = item.unit || 'UN';
+        if (item.name && /\(CX\)/i.test(item.name)) {
+          finalUnit = 'CX';
+        }
+        insertItem.run(orderId, item.sku, item.name, item.quantity, finalUnit);
       }
       return orderId;
     });
@@ -616,7 +620,14 @@ app.get('/api/orders', authenticateToken, (req, res) => {
 
     const ordersWithItems = orders.map(order => {
       const items = db.prepare("SELECT * FROM order_items WHERE order_id = ?").all(order.id);
-      return { ...order, items };
+      const mappedItems = items.map(it => {
+        let finalUnit = it.unit || 'UN';
+        if (it.name && /\(CX\)/i.test(it.name)) {
+          finalUnit = 'CX';
+        }
+        return { ...it, unit: finalUnit };
+      });
+      return { ...order, items: mappedItems };
     });
 
     res.json(ordersWithItems);

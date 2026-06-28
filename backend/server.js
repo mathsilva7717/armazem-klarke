@@ -8,9 +8,21 @@ require('dotenv').config();
 
 const app = express();
 const PORT = process.env.PORT || 3005; // Use port 3005 for the warehouse module
-const JWT_SECRET = process.env.JWT_SECRET || 'armazem-secret-key-123';
+if (!process.env.JWT_SECRET) {
+  console.warn('[SECURITY] AVISO: JWT_SECRET não configurado! Usando chave padrão insegura. Defina JWT_SECRET no .env antes de usar em produção.');
+}
+const JWT_SECRET = process.env.JWT_SECRET || 'armazem-secret-key-insecure-do-not-use-in-prod';
 
-app.use(cors());
+const allowedOrigins = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+  : ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:3005'];
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+    callback(new Error('Origem não permitida pela política CORS.'));
+  },
+  credentials: true
+}));
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
@@ -69,6 +81,19 @@ try {
   console.log('better-sqlite3 não encontrado. Tentando carregar node:sqlite nativo...');
   const { DatabaseSync } = require('node:sqlite');
   db = new DatabaseSync(dbPath);
+  db.transaction = function (fn) {
+    return function (...args) {
+      db.exec('BEGIN TRANSACTION');
+      try {
+        const result = fn(...args);
+        db.exec('COMMIT');
+        return result;
+      } catch (err) {
+        db.exec('ROLLBACK');
+        throw err;
+      }
+    };
+  };
   console.log('Conectado ao banco de dados SQLite do Armazém via node:sqlite.');
 }
 
@@ -391,6 +416,20 @@ app.post('/api/exits', authenticateToken, (req, res) => {
 // Create User (Only for management)
 app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
   const { username, password, name, role } = req.body;
+
+  if (!username || !password || !name) {
+    return res.status(400).json({ error: 'Nome, usuário e senha são obrigatórios.' });
+  }
+  if (!/^[a-zA-Z0-9._-]{3,50}$/.test(username)) {
+    return res.status(400).json({ error: 'Usuário deve ter 3–50 caracteres (letras, números, pontos, traços, underscores).' });
+  }
+  if (name.length > 100) {
+    return res.status(400).json({ error: 'Nome muito longo (máximo 100 caracteres).' });
+  }
+  if (password.length < 6) {
+    return res.status(400).json({ error: 'A senha deve ter pelo menos 6 caracteres.' });
+  }
+
   const hashedPassword = bcrypt.hashSync(password, 10);
   const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque'];
   const userRole = validRoles.includes(role) ? role : 'operator';
@@ -777,15 +816,23 @@ app.put('/api/orders/:id/upload', authenticateToken, (req, res) => {
       return res.status(404).json({ error: 'Pedido não encontrado.' });
     }
 
-    const matches = fileData.match(/^data:(.+);base64,(.+)$/);
-    if (!matches) {
+    if (!fileData.startsWith('data:')) {
+      return res.status(400).json({ error: 'Formato de arquivo inválido.' });
+    }
+    const base64Index = fileData.indexOf(';base64,');
+    if (base64Index === -1) {
       return res.status(400).json({ error: 'Formato de arquivo inválido.' });
     }
 
-    const base64Data = matches[2];
+    const base64Data = fileData.substring(base64Index + 8);
     const buffer = Buffer.from(base64Data, 'base64');
 
-    const ext = fileName.split('.').pop();
+    const rawExt = fileName.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
+    if (!allowedExtensions.includes(rawExt)) {
+      return res.status(400).json({ error: 'Tipo de arquivo não permitido. Use PDF ou imagem (JPG, PNG, WEBP).' });
+    }
+    const ext = rawExt;
     const savedName = `${type}-${id}-${Date.now()}.${ext}`;
     const filePath = path.join(uploadsDir, savedName);
     

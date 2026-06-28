@@ -117,6 +117,8 @@ const Deliveries = () => {
     }
   };
 
+  const STATUS_PRIORITY = { 'PENDENTE': 0, 'PREPARANDO': 1, 'EM_ROTA': 2, 'ERRO': 3, 'FINALIZADO': 4 };
+
   const filterOrders = () => {
     let tempOrders = [...orders];
 
@@ -126,12 +128,19 @@ const Deliveries = () => {
 
     if (searchTerm) {
       const search = searchTerm.toLowerCase();
-      tempOrders = tempOrders.filter(o => 
+      tempOrders = tempOrders.filter(o =>
         o.store_name.toLowerCase().includes(search) ||
         o.id.toString().includes(search) ||
         (o.emitter_name && o.emitter_name.toLowerCase().includes(search))
       );
     }
+
+    tempOrders.sort((a, b) => {
+      const pa = STATUS_PRIORITY[a.status] ?? 5;
+      const pb = STATUS_PRIORITY[b.status] ?? 5;
+      if (pa !== pb) return pa - pb;
+      return new Date(b.created_at) - new Date(a.created_at);
+    });
 
     setFilteredOrders(tempOrders);
   };
@@ -175,6 +184,9 @@ const Deliveries = () => {
   const handleFileUpload = async (e, orderId, type) => {
     const file = e.target.files[0];
     if (!file) return;
+
+    // Reset the input value so the change event triggers again for the same file
+    e.target.value = '';
 
     if (file.size > 50 * 1024 * 1024) {
       toast.error('O arquivo deve ter no máximo 50MB.');
@@ -517,11 +529,24 @@ const Deliveries = () => {
     }
   };
 
-  const ITEMS_PER_PAGE = 10;
-  const totalPages = Math.ceil(filteredOrders.length / ITEMS_PER_PAGE);
+  const ITEMS_PER_PAGE = 15;
+  const totalPages = Math.max(1, Math.ceil(filteredOrders.length / ITEMS_PER_PAGE));
   const indexOfLastItem = currentPage * ITEMS_PER_PAGE;
   const indexOfFirstItem = indexOfLastItem - ITEMS_PER_PAGE;
   const currentOrders = filteredOrders.slice(indexOfFirstItem, indexOfLastItem);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) return Array.from({ length: totalPages }, (_, i) => i + 1);
+    const pages = [];
+    const left = Math.max(2, currentPage - 1);
+    const right = Math.min(totalPages - 1, currentPage + 1);
+    pages.push(1);
+    if (left > 2) pages.push('...');
+    for (let i = left; i <= right; i++) pages.push(i);
+    if (right < totalPages - 1) pages.push('...');
+    pages.push(totalPages);
+    return pages;
+  };
 
   return (
     <div style={{ minHeight: '100vh', padding: '20px' }}>
@@ -638,349 +663,194 @@ const Deliveries = () => {
           </div>
         </section>
 
-        <section className="glass-card animate-fade-in" style={{ padding: '32px' }}>
-          <h3 style={{ marginBottom: '24px', display: 'flex', alignItems: 'center', gap: '10px', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px' }}>
-            <Truck size={20} color="var(--primary)" /> Fila de Expedição ({filteredOrders.length})
-          </h3>
+        <section className="glass-card animate-fade-in" style={{ padding: '28px 32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px' }}>
+            <h3 style={{ display: 'flex', alignItems: 'center', gap: '10px', textTransform: 'uppercase', fontSize: '0.9rem', letterSpacing: '1px' }}>
+              <Truck size={20} color="var(--primary)" /> Fila de Expedição
+            </h3>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600' }}>
+              {filteredOrders.length === 0
+                ? 'Nenhum pedido'
+                : `Exibindo ${indexOfFirstItem + 1}–${Math.min(indexOfLastItem, filteredOrders.length)} de ${filteredOrders.length} pedido${filteredOrders.length !== 1 ? 's' : ''}`}
+            </span>
+          </div>
 
           <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.85rem' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.84rem' }}>
               <thead>
-                <tr style={{ textAlign: 'left', borderBottom: '1px solid var(--border)', textTransform: 'uppercase' }}>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>ID</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Data/Hora</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Loja Destinatária</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Responsáveis</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Produtos</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Status</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)' }}>Documentos</th>
-                  <th style={{ padding: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>Ações</th>
+                <tr style={{ textAlign: 'left', borderBottom: '2px solid var(--border)', textTransform: 'uppercase' }}>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Pedido</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Loja</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Status</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Equipe</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }}>Itens</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem' }}>Documentos</th>
+                  <th style={{ padding: '10px 12px', color: 'var(--text-muted)', fontSize: '0.75rem', textAlign: 'center' }}>Ações</th>
                 </tr>
               </thead>
               <tbody>
                 {loading ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Carregando pedidos de expedição...</td>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Carregando pedidos...</td>
                   </tr>
                 ) : filteredOrders.length === 0 ? (
                   <tr>
-                    <td colSpan="8" style={{ textAlign: 'center', padding: '40px', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</td>
+                    <td colSpan="7" style={{ textAlign: 'center', padding: '48px', color: 'var(--text-muted)' }}>Nenhum pedido encontrado.</td>
                   </tr>
                 ) : (
                   currentOrders.map(order => (
-                    <tr key={order.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.3)' }}>
-                      <td data-label="ID" style={{ padding: '12px', fontWeight: 'bold', color: 'var(--primary)' }}>#{order.id}</td>
-                      <td data-label="Data/Hora" style={{ padding: '12px', color: 'var(--text-muted)' }}>{formatDate(order.created_at)}</td>
-                      <td data-label="Loja Destinatária" style={{ padding: '12px', fontWeight: '600' }}>{order.store_name}</td>
-                      <td data-label="Responsáveis" style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '2px' }}>
-                          <span style={{ fontSize: '0.8rem' }}>
-                            <strong style={{ color: 'var(--text-muted)' }}>Emissor:</strong> {order.emitter_name || 'Sistema'}
+                    <tr key={order.id} style={{ borderBottom: '1px solid rgba(51, 65, 85, 0.3)', transition: 'background 0.15s' }}
+                      onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.02)'}
+                      onMouseLeave={(e) => e.currentTarget.style.background = 'transparent'}
+                    >
+                      {/* Pedido: ID + data */}
+                      <td data-label="Pedido" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
+                        <span style={{ fontWeight: '800', color: 'var(--primary)', fontSize: '0.9rem' }}>#{order.id}</span>
+                        <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '2px' }}>{formatDate(order.created_at)}</div>
+                      </td>
+
+                      {/* Loja */}
+                      <td data-label="Loja" style={{ padding: '12px', fontWeight: '600', maxWidth: '200px' }}>
+                        {order.store_name}
+                      </td>
+
+                      {/* Status */}
+                      <td data-label="Status" style={{ padding: '12px' }}>{getStatusBadge(order.status)}</td>
+
+                      {/* Equipe */}
+                      <td data-label="Equipe" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                          <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                            <strong>Emissor:</strong> {order.emitter_name || 'Sistema'}
                           </span>
                           {order.acceptor_name && (
-                            <span style={{ fontSize: '0.8rem' }}>
-                              <strong style={{ color: '#3b82f6' }}>Aceito por:</strong> {order.acceptor_name}
+                            <span style={{ fontSize: '0.78rem', color: '#3b82f6' }}>
+                              <strong>Aceito:</strong> {order.acceptor_name}
                             </span>
                           )}
                           {order.finalizer_name && (
-                            <span style={{ fontSize: '0.8rem' }}>
-                              <strong style={{ color: order.status === 'FINALIZADO' ? '#22c55e' : '#ef4444' }}>
-                                {order.status === 'FINALIZADO' ? 'Conferido por:' : 'Divergido por:'}
-                              </strong> {order.finalizer_name}
+                            <span style={{ fontSize: '0.78rem', color: order.status === 'FINALIZADO' ? '#22c55e' : '#ef4444' }}>
+                              <strong>{order.status === 'FINALIZADO' ? 'Conferido:' : 'Divergido:'}</strong> {order.finalizer_name}
                             </span>
                           )}
                         </div>
                       </td>
-                      <td data-label="Produtos" style={{ padding: '12px' }}>
+
+                      {/* Itens */}
+                      <td data-label="Itens" style={{ padding: '12px', textAlign: 'center' }}>
                         <button
                           onClick={() => setSelectedOrder(order)}
                           style={{
-                            background: 'rgba(245, 158, 11, 0.1)',
+                            background: 'rgba(245, 158, 11, 0.08)',
                             border: '1px solid rgba(245, 158, 11, 0.3)',
                             color: 'var(--primary)',
-                            padding: '6px 12px',
+                            padding: '5px 10px',
                             cursor: 'pointer',
                             fontSize: '0.75rem',
-                            fontWeight: 'bold',
+                            fontWeight: '700',
                             display: 'inline-flex',
                             alignItems: 'center',
-                            gap: '6px',
-                            borderRadius: '4px',
-                            transition: 'all 0.2s ease'
+                            gap: '5px',
+                            transition: 'all 0.15s'
                           }}
-                          onMouseEnter={(e) => {
-                            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.2)';
-                            e.currentTarget.style.borderColor = 'var(--primary)';
-                          }}
-                          onMouseLeave={(e) => {
-                            e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
-                            e.currentTarget.style.borderColor = 'rgba(245, 158, 11, 0.3)';
-                          }}
+                          onMouseEnter={(e) => { e.currentTarget.style.background = 'rgba(245,158,11,0.18)'; e.currentTarget.style.borderColor = 'var(--primary)'; }}
+                          onMouseLeave={(e) => { e.currentTarget.style.background = 'rgba(245,158,11,0.08)'; e.currentTarget.style.borderColor = 'rgba(245,158,11,0.3)'; }}
+                          title="Ver itens do pedido"
                         >
-                          <Package size={14} /> {order.items?.length || 0} {order.items?.length === 1 ? 'Item' : 'Itens'}
+                          <Package size={13} /> {order.items?.length || 0}
                         </button>
                       </td>
-                      <td data-label="Status" style={{ padding: '12px' }}>{getStatusBadge(order.status)}</td>
+
+                      {/* Documentos */}
                       <td data-label="Documentos" style={{ padding: '12px' }}>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                          {/* Nota Fiscal */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                           {order.invoice_path ? (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                              <a
-                                href={`/api/uploads/${order.invoice_path}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  color: 'var(--primary)',
-                                  fontSize: '0.75rem',
-                                  textDecoration: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontWeight: 'bold'
-                                }}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <a href={`/api/uploads/${order.invoice_path}`} target="_blank" rel="noopener noreferrer"
+                                style={{ color: 'var(--primary)', fontSize: '0.75rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}
                                 onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                                 onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                               >
-                                <FileText size={12} /> Nota Fiscal
+                                <FileText size={12} /> NF-e
                               </a>
-                              <button
-                                onClick={() => handleDeleteFile(order.id, 'invoice')}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: 'var(--error)',
-                                  cursor: 'pointer',
-                                  padding: '2px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}
+                              <button onClick={() => handleDeleteFile(order.id, 'invoice')}
+                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'inline-flex' }}
                                 title="Excluir Nota Fiscal"
-                              >
-                                <Trash2 size={12} />
-                              </button>
+                              ><Trash2 size={11} /></button>
                             </div>
                           ) : (
-                            <label style={{
-                              color: 'var(--text-muted)',
-                              fontSize: '0.72rem',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'color 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                            <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', transition: 'color 0.2s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                             >
-                              <Upload size={12} /> Subir NF
-                              <input
-                                type="file"
-                                accept=".pdf,image/*"
-                                style={{ display: 'none' }}
-                                onChange={(e) => handleFileUpload(e, order.id, 'invoice')}
-                              />
+                              <Upload size={11} /> NF-e
+                              <input type="file" accept=".pdf,image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, order.id, 'invoice')} />
                             </label>
                           )}
-
-                          {/* Romaneio */}
                           {order.packing_slip_path ? (
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px' }}>
-                              <a
-                                href={`/api/uploads/${order.packing_slip_path}`}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                style={{
-                                  color: 'var(--primary)',
-                                  fontSize: '0.75rem',
-                                  textDecoration: 'none',
-                                  display: 'inline-flex',
-                                  alignItems: 'center',
-                                  gap: '4px',
-                                  fontWeight: 'bold'
-                                }}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                              <a href={`/api/uploads/${order.packing_slip_path}`} target="_blank" rel="noopener noreferrer"
+                                style={{ color: 'var(--primary)', fontSize: '0.75rem', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: '4px', fontWeight: '700' }}
                                 onMouseEnter={(e) => e.target.style.textDecoration = 'underline'}
                                 onMouseLeave={(e) => e.target.style.textDecoration = 'none'}
                               >
                                 <FileText size={12} /> Romaneio
                               </a>
-                              <button
-                                onClick={() => handleDeleteFile(order.id, 'packing_slip')}
-                                style={{
-                                  background: 'transparent',
-                                  border: 'none',
-                                  color: 'var(--error)',
-                                  cursor: 'pointer',
-                                  padding: '2px',
-                                  display: 'inline-flex',
-                                  alignItems: 'center'
-                                }}
+                              <button onClick={() => handleDeleteFile(order.id, 'packing_slip')}
+                                style={{ background: 'transparent', border: 'none', color: '#ef4444', cursor: 'pointer', padding: '2px', display: 'inline-flex' }}
                                 title="Excluir Romaneio"
-                              >
-                                <Trash2 size={12} />
-                              </button>
+                              ><Trash2 size={11} /></button>
                             </div>
                           ) : (
-                            <label style={{
-                              color: 'var(--text-muted)',
-                              fontSize: '0.72rem',
-                              cursor: 'pointer',
-                              display: 'inline-flex',
-                              alignItems: 'center',
-                              gap: '4px',
-                              transition: 'color 0.2s'
-                            }}
-                            onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
-                            onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
+                            <label style={{ color: 'var(--text-muted)', fontSize: '0.72rem', cursor: 'pointer', display: 'inline-flex', alignItems: 'center', gap: '4px', transition: 'color 0.2s' }}
+                              onMouseEnter={(e) => e.currentTarget.style.color = '#fff'}
+                              onMouseLeave={(e) => e.currentTarget.style.color = 'var(--text-muted)'}
                             >
-                              <Upload size={12} /> Subir Romaneio
-                              <input
-                                type="file"
-                                accept=".pdf,image/*"
-                                style={{ display: 'none' }}
-                                onChange={(e) => handleFileUpload(e, order.id, 'packing_slip')}
-                              />
+                              <Upload size={11} /> Romaneio
+                              <input type="file" accept=".pdf,image/*" style={{ display: 'none' }} onChange={(e) => handleFileUpload(e, order.id, 'packing_slip')} />
                             </label>
                           )}
                         </div>
                       </td>
-                      <td data-label="Ações" style={{ padding: '12px', whiteSpace: 'nowrap' }}>
-                        <div style={{ display: 'flex', gap: '6px', justifyContent: 'center', alignItems: 'center' }}>
-                          <button
-                            onClick={() => handleDownloadPDF(order)}
-                            style={{
-                              background: 'transparent',
-                              border: '1px solid var(--border)',
-                              color: 'var(--text-main)',
-                              padding: '6px 10px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold',
-                              textTransform: 'uppercase'
-                            }}
-                            title="Baixar PDF do Pedido"
-                          >
-                            <Download size={12} /> PDF
-                          </button>
+
+                      {/* Ações */}
+                      <td data-label="Ações" style={{ padding: '12px' }}>
+                        <div style={{ display: 'flex', gap: '5px', justifyContent: 'center', alignItems: 'center', flexWrap: 'wrap' }}>
+                          <button onClick={() => handleDownloadPDF(order)}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--text-main)', padding: '5px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}
+                            title="Baixar PDF"
+                          ><Download size={11} /> PDF</button>
 
                           {order.status === 'PENDENTE' && canManageDeliveries && (
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'PREPARANDO')}
-                              style={{
-                                background: 'rgba(59, 130, 246, 0.15)',
-                                border: '1px solid #3b82f6',
-                                color: '#3b82f6',
-                                padding: '6px 10px',
-                                cursor: 'pointer',
-                                fontSize: '0.75rem',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase'
-                              }}
-                            >
-                              Aceitar
-                            </button>
+                            <button onClick={() => handleUpdateStatus(order.id, 'PREPARANDO')}
+                              style={{ background: 'rgba(59,130,246,0.12)', border: '1px solid #3b82f6', color: '#3b82f6', padding: '5px 9px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}
+                            >Aceitar</button>
                           )}
-
                           {order.status === 'PREPARANDO' && canManageDeliveries && (
-                            <button
-                              onClick={() => handleUpdateStatus(order.id, 'EM_ROTA')}
-                              style={{
-                                background: 'rgba(245, 158, 11, 0.15)',
-                                border: '1px solid var(--primary)',
-                                color: 'var(--primary)',
-                                padding: '6px 10px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase'
-                              }}
-                            >
-                              <Truck size={12} /> Despachar
-                            </button>
+                            <button onClick={() => handleUpdateStatus(order.id, 'EM_ROTA')}
+                              style={{ background: 'rgba(245,158,11,0.12)', border: '1px solid var(--primary)', color: 'var(--primary)', padding: '5px 9px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '5px', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}
+                            ><Truck size={11} /> Despachar</button>
                           )}
-
                           {order.status === 'EM_ROTA' && canManageDeliveries && (
                             <>
-                              <button
-                                onClick={() => handleUpdateStatus(order.id, 'FINALIZADO')}
-                                style={{
-                                  background: 'rgba(34, 197, 94, 0.15)',
-                                  border: '1px solid #22c55e',
-                                  color: '#22c55e',
-                                  padding: '6px 10px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 'bold',
-                                  textTransform: 'uppercase'
-                                }}
-                              >
-                                Finalizar
-                              </button>
-                              <button
-                                onClick={() => handleUpdateStatus(order.id, 'ERRO')}
-                                style={{
-                                  background: 'rgba(239, 68, 68, 0.15)',
-                                  border: '1px solid #ef4444',
-                                  color: '#ef4444',
-                                  padding: '6px 10px',
-                                  cursor: 'pointer',
-                                  fontSize: '0.75rem',
-                                  fontWeight: 'bold',
-                                  textTransform: 'uppercase'
-                                }}
-                              >
-                                Divergência
-                              </button>
+                              <button onClick={() => handleUpdateStatus(order.id, 'FINALIZADO')}
+                                style={{ background: 'rgba(34,197,94,0.12)', border: '1px solid #22c55e', color: '#22c55e', padding: '5px 9px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}
+                              >Finalizar</button>
+                              <button onClick={() => handleUpdateStatus(order.id, 'ERRO')}
+                                style={{ background: 'rgba(239,68,68,0.12)', border: '1px solid #ef4444', color: '#ef4444', padding: '5px 9px', cursor: 'pointer', fontSize: '0.72rem', fontWeight: '700', textTransform: 'uppercase' }}
+                              >Divergência</button>
                             </>
                           )}
-
                           {user.isAdmin && (
-                            <button
-                              onClick={() => handleDeleteOrder(order.id)}
-                              style={{
-                                background: 'rgba(239, 68, 68, 0.1)',
-                                border: '1px solid rgba(239, 68, 68, 0.3)',
-                                color: '#ef4444',
-                                padding: '6px 10px',
-                                cursor: 'pointer',
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '6px',
-                                fontSize: '0.75rem',
-                                fontWeight: 'bold',
-                                textTransform: 'uppercase'
-                              }}
+                            <button onClick={() => handleDeleteOrder(order.id)}
+                              style={{ background: 'transparent', border: '1px solid rgba(239,68,68,0.3)', color: '#ef4444', padding: '5px 7px', cursor: 'pointer', display: 'flex', alignItems: 'center', fontSize: '0.72rem' }}
                               title="Excluir da Fila"
-                            >
-                              <Trash2 size={12} /> Excluir
-                            </button>
+                            ><Trash2 size={12} /></button>
                           )}
-
-                          <button
-                            onClick={() => setSelectedOrder(order)}
-                            style={{
-                              background: 'transparent',
-                              border: '1px solid var(--border)',
-                              color: 'var(--primary)',
-                              padding: '6px 10px',
-                              cursor: 'pointer',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '6px',
-                              fontSize: '0.75rem',
-                              fontWeight: 'bold',
-                              textTransform: 'uppercase'
-                            }}
-                            title="Ver Detalhes do Pedido"
-                          >
-                            <Info size={12} /> Info
-                          </button>
+                          <button onClick={() => setSelectedOrder(order)}
+                            style={{ background: 'transparent', border: '1px solid var(--border)', color: 'var(--primary)', padding: '5px 7px', cursor: 'pointer', display: 'flex', alignItems: 'center' }}
+                            title="Ver Detalhes"
+                          ><Info size={13} /></button>
                         </div>
                       </td>
                     </tr>
@@ -990,119 +860,60 @@ const Deliveries = () => {
             </table>
           </div>
 
-          {/* Controls for pagination */}
-          {totalPages > 1 && (
-            <div style={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              marginTop: '24px',
-              paddingTop: '20px',
-              borderTop: '1px solid var(--border)'
-            }}>
-              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontWeight: 'bold' }}>
-                PÁGINA {currentPage} DE {totalPages} ({filteredOrders.length} PEDIDOS NO TOTAL)
-              </span>
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  disabled={currentPage === 1}
-                  style={{
-                    background: currentPage === 1 ? 'transparent' : 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid var(--border)',
-                    color: currentPage === 1 ? 'var(--text-muted)' : 'var(--primary)',
-                    padding: '8px 16px',
-                    fontWeight: 'bold',
-                    cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    borderRadius: '0px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentPage !== 1) {
-                      e.currentTarget.style.background = 'var(--primary)';
-                      e.currentTarget.style.color = '#000';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentPage !== 1) {
-                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
-                      e.currentTarget.style.color = 'var(--primary)';
-                    }
-                  }}
-                >
-                  Anterior
-                </button>
-                
-                {/* Page number buttons */}
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => {
-                  const isCurrent = pageNum === currentPage;
-                  return (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      style={{
-                        background: isCurrent ? 'var(--primary)' : 'transparent',
-                        border: '1px solid var(--border)',
-                        color: isCurrent ? '#000' : '#fff',
-                        width: '32px',
-                        height: '32px',
-                        fontWeight: 'bold',
-                        cursor: 'pointer',
-                        fontSize: '0.75rem',
-                        borderRadius: '0px',
-                        transition: 'all 0.2s'
-                      }}
-                      onMouseEnter={(e) => {
-                        if (!isCurrent) {
-                          e.currentTarget.style.background = 'rgba(255,255,255,0.05)';
-                        }
-                      }}
-                      onMouseLeave={(e) => {
-                        if (!isCurrent) {
-                          e.currentTarget.style.background = 'transparent';
-                        }
-                      }}
-                    >
-                      {pageNum}
-                    </button>
-                  );
-                })}
+          {/* Paginação — sempre visível */}
+          <div style={{
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            marginTop: '20px',
+            paddingTop: '16px',
+            borderTop: '1px solid var(--border)'
+          }}>
+            <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: '600', textTransform: 'uppercase' }}>
+              Página {currentPage} de {totalPages}
+            </span>
+            <div style={{ display: 'flex', gap: '4px', alignItems: 'center' }}>
+              <button
+                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+                disabled={currentPage === 1}
+                style={{
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: currentPage === 1 ? 'var(--text-muted)' : 'var(--primary)',
+                  padding: '6px 14px', fontWeight: '700', cursor: currentPage === 1 ? 'not-allowed' : 'pointer',
+                  fontSize: '0.75rem', textTransform: 'uppercase', opacity: currentPage === 1 ? 0.4 : 1
+                }}
+              >← Anterior</button>
 
-                <button
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  disabled={currentPage === totalPages}
-                  style={{
-                    background: currentPage === totalPages ? 'transparent' : 'rgba(245, 158, 11, 0.1)',
-                    border: '1px solid var(--border)',
-                    color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--primary)',
-                    padding: '8px 16px',
-                    fontWeight: 'bold',
-                    cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
-                    fontSize: '0.75rem',
-                    textTransform: 'uppercase',
-                    borderRadius: '0px',
-                    transition: 'all 0.2s'
-                  }}
-                  onMouseEnter={(e) => {
-                    if (currentPage !== totalPages) {
-                      e.currentTarget.style.background = 'var(--primary)';
-                      e.currentTarget.style.color = '#000';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (currentPage !== totalPages) {
-                      e.currentTarget.style.background = 'rgba(245, 158, 11, 0.1)';
-                      e.currentTarget.style.color = 'var(--primary)';
-                    }
-                  }}
-                >
-                  Próximo
-                </button>
-              </div>
+              {getPageNumbers().map((p, idx) =>
+                p === '...' ? (
+                  <span key={`ellipsis-${idx}`} style={{ color: 'var(--text-muted)', padding: '0 4px', fontSize: '0.8rem' }}>…</span>
+                ) : (
+                  <button
+                    key={p}
+                    onClick={() => setCurrentPage(p)}
+                    style={{
+                      background: p === currentPage ? 'var(--primary)' : 'transparent',
+                      border: '1px solid var(--border)',
+                      color: p === currentPage ? '#000' : '#fff',
+                      width: '32px', height: '32px',
+                      fontWeight: '700', cursor: 'pointer', fontSize: '0.75rem'
+                    }}
+                  >{p}</button>
+                )
+              )}
+
+              <button
+                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+                disabled={currentPage === totalPages}
+                style={{
+                  background: 'transparent', border: '1px solid var(--border)',
+                  color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--primary)',
+                  padding: '6px 14px', fontWeight: '700', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer',
+                  fontSize: '0.75rem', textTransform: 'uppercase', opacity: currentPage === totalPages ? 0.4 : 1
+                }}
+              >Próximo →</button>
             </div>
-          )}
+          </div>
         </section>
       </main>
 

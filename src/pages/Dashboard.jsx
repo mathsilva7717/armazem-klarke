@@ -152,26 +152,30 @@ const Dashboard = () => {
           </div>
         </div>
 
-        <div style={{ 
-          position: 'absolute', 
-          left: '50%', 
-          transform: 'translateX(-50%)', 
-          textAlign: 'center' 
+        <div style={{
+          position: 'absolute',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          textAlign: 'center',
+          whiteSpace: 'nowrap'
         }}>
-          <p style={{ fontSize: '0.9rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800', letterSpacing: '1px', marginBottom: '4px' }}>
-            {getGreeting()}
+          <p style={{ fontSize: '1.1rem', fontWeight: '700', color: 'var(--text-main)' }}>
+            {getGreeting()}, <span style={{ color: 'var(--primary)', fontWeight: '900' }}>{(user.name || user.username).split(' ')[0]}</span>
           </p>
-          <h2 style={{ fontSize: '1.25rem', fontWeight: '900', color: 'var(--primary)', textTransform: 'uppercase' }}>
-            {user.name || user.username}
-          </h2>
         </div>
 
-        <div style={{ display: 'flex', alignItems: 'center', gap: '20px' }}>
-          <div style={{ textAlign: 'right' }}>
-            <p style={{ fontSize: '0.6rem', color: 'var(--text-muted)', textTransform: 'uppercase', fontWeight: '800' }}>Cargo</p>
-            <p style={{ fontSize: '0.85rem', color: '#fff', fontWeight: '700', textTransform: 'uppercase' }}>
-              {(user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'Administrador' : user.role === 'expedicao' ? 'Expedição' : user.role === 'estoque' ? 'Estoque' : user.role === 'gerencia' ? 'Gerência' : 'Operador'}
-            </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          <div>
+            {(() => {
+              const resolvedRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
+              const roleMap = { admin: ['Administrador', 'var(--primary)', 'rgba(245,158,11,0.15)'], expedicao: ['Expedição', '#3b82f6', 'rgba(59,130,246,0.12)'], estoque: ['Estoque', '#22c55e', 'rgba(34,197,94,0.12)'], gerencia: ['Gerência', '#a855f7', 'rgba(168,85,247,0.12)'], operator: ['Operador', 'var(--text-muted)', 'rgba(255,255,255,0.05)'] };
+              const [label, color, bg] = roleMap[resolvedRole] || roleMap.operator;
+              return (
+                <span style={{ fontSize: '0.72rem', padding: '5px 12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color, background: bg, border: `1px solid ${color}` }}>
+                  {label}
+                </span>
+              );
+            })()}
           </div>
           <button 
             onClick={handleLogout} 

@@ -13,16 +13,19 @@ if (!process.env.JWT_SECRET) {
 }
 const JWT_SECRET = process.env.JWT_SECRET || 'armazem-secret-key-insecure-do-not-use-in-prod';
 
-const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
-  : ['http://localhost:5173', 'http://localhost:4173', 'http://localhost:3005'];
-app.use(cors({
-  origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
-    callback(new Error('Origem não permitida pela política CORS.'));
-  },
-  credentials: true
-}));
+if (process.env.ALLOWED_ORIGINS) {
+  const allowedOrigins = process.env.ALLOWED_ORIGINS.split(',').map(o => o.trim());
+  app.use(cors({
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) return callback(null, true);
+      console.warn(`[CORS] Origem bloqueada: ${origin}`);
+      callback(null, false);
+    },
+    credentials: true
+  }));
+} else {
+  app.use(cors());
+}
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ limit: '50mb', extended: true }));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));

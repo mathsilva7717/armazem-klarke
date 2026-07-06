@@ -188,34 +188,25 @@ const Deliveries = () => {
     // Reset the input value so the change event triggers again for the same file
     e.target.value = '';
 
-    if (file.size > 50 * 1024 * 1024) {
-      toast.error('O arquivo deve ter no máximo 50MB.');
+    if (file.size > 100 * 1024 * 1024) {
+      toast.error('O arquivo deve ter no máximo 100MB.');
       return;
     }
 
     const loadToast = toast.loading(`Enviando ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'}...`);
 
-    const reader = new FileReader();
-    reader.readAsDataURL(file);
-    reader.onload = async () => {
-      try {
-        await api.put(`/orders/${orderId}/upload`, {
-          type,
-          fileData: reader.result,
-          fileName: file.name
-        });
-        toast.dismiss(loadToast);
-        toast.success(`${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} enviada com sucesso!`);
-        fetchOrders();
-      } catch (err) {
-        toast.dismiss(loadToast);
-        toast.error(err.response?.data?.error || 'Erro ao enviar arquivo.');
-      }
-    };
-    reader.onerror = () => {
+    try {
+      const formData = new FormData();
+      formData.append('type', type);
+      formData.append('file', file);
+      await api.put(`/orders/${orderId}/upload`, formData);
       toast.dismiss(loadToast);
-      toast.error('Erro ao ler o arquivo.');
-    };
+      toast.success(`${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} enviada com sucesso!`);
+      fetchOrders();
+    } catch (err) {
+      toast.dismiss(loadToast);
+      toast.error(err.response?.data?.error || 'Erro ao enviar arquivo.');
+    }
   };
 
   const handleDeleteFile = (orderId, type) => {

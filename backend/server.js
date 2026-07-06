@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const multer = require('multer');
 require('dotenv').config();
 
 const app = express();
@@ -26,8 +27,9 @@ if (process.env.ALLOWED_ORIGINS) {
 } else {
   app.use(cors());
 }
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+// Uploads de arquivos usam multipart/form-data (multer) — o JSON pode ser pequeno
+app.use(express.json({ limit: '2mb' }));
+app.use(express.urlencoded({ limit: '2mb', extended: true }));
 app.use('/api/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Ensure uploads directory exists on start
@@ -35,6 +37,28 @@ const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir);
 }
+
+// Upload multipart (stream direto pro disco — suporta arquivos grandes sem inflar em base64)
+const MAX_UPLOAD_MB = 100;
+const ALLOWED_UPLOAD_EXTENSIONS = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
+const upload = multer({
+  storage: multer.diskStorage({
+    destination: uploadsDir,
+    filename: (req, file, cb) => {
+      // Nome temporário; renomeado no handler após validar o pedido
+      const ext = path.extname(file.originalname).toLowerCase().replace(/[^a-z0-9.]/g, '');
+      cb(null, `tmp-${Date.now()}-${Math.round(Math.random() * 1e9)}${ext}`);
+    }
+  }),
+  limits: { fileSize: MAX_UPLOAD_MB * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const ext = file.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+    if (!ALLOWED_UPLOAD_EXTENSIONS.includes(ext)) {
+      return cb(new Error('Tipo de arquivo não permitido. Use PDF ou imagem (JPG, PNG, WEBP).'));
+    }
+    cb(null, true);
+  }
+});
 
 // Cabeçalhos de Segurança (Contra Clickjacking, XSS, MIME Sniffing)
 app.use((req, res, next) => {
@@ -51,6 +75,14 @@ app.use((req, res, next) => {
 const rateLimit = {};
 const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutos
 const MAX_REQUESTS = 300; // Limite de 300 requisições por IP a cada 15 min
+
+// Remove entradas expiradas periodicamente para não crescer sem limite
+setInterval(() => {
+  const now = Date.now();
+  for (const ip of Object.keys(rateLimit)) {
+    if (now > rateLimit[ip].resetTime) delete rateLimit[ip];
+  }
+}, RATE_LIMIT_WINDOW_MS).unref();
 
 app.use((req, res, next) => {
   const ip = req.ip || req.connection.remoteAddress || 'unknown';
@@ -338,10 +370,11 @@ app.post('/api/login', (req, res) => {
   const { username, password } = req.body;
   try {
     const user = db.prepare("SELECT * FROM users WHERE username = ?").get(username);
-    if (!user) return res.status(401).json({ error: 'Usuário não encontrado' });
+    // Mensagem única para usuário/senha errados — evita enumeração de usuários
+    if (!user) return res.status(401).json({ error: 'Usuário ou senha incorretos' });
 
     const validPassword = bcrypt.compareSync(password, user.password);
-    if (!validPassword) return res.status(401).json({ error: 'Senha incorreta' });
+    if (!validPassword) return res.status(401).json({ error: 'Usuário ou senha incorretos' });
 
     const token = jwt.sign({ id: user.id, username: user.username, role: user.role, isAdmin: !!user.is_admin }, JWT_SECRET, { expiresIn: '8h' });
     const mustChange = !!user.must_change_password;
@@ -389,9 +422,9 @@ app.post('/api/change-password', authenticateToken, (req, res) => {
 app.get('/api/exits', authenticateToken, (req, res) => {
   try {
     const rows = db.prepare(`
-        SELECT e.*, u.name as operator_name 
-        FROM stock_exits e 
-        JOIN users u ON e.operator_id = u.id 
+        SELECT e.*, COALESCE(u.name, 'Usuário removido') as operator_name
+        FROM stock_exits e
+        LEFT JOIN users u ON e.operator_id = u.id
         ORDER BY e.created_at DESC
       `).all();
     res.json(rows);
@@ -403,7 +436,11 @@ app.get('/api/exits', authenticateToken, (req, res) => {
 // Register Stock Exit
 app.post('/api/exits', authenticateToken, (req, res) => {
   const { sku, quantity, store, date, unit_price } = req.body;
-  const operator_id = req.user.id; 
+  const operator_id = req.user.id;
+
+  if (!sku || !store || !date || !Number.isFinite(Number(quantity)) || Number(quantity) <= 0) {
+    return res.status(400).json({ error: 'Dados da saída inválidos: SKU, loja, data e quantidade (> 0) são obrigatórios.' });
+  }
 
   try {
     const info = db.prepare(
@@ -652,9 +689,9 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 app.get('/api/orders', authenticateToken, (req, res) => {
   try {
     const orders = db.prepare(`
-      SELECT o.*, u.name as emitter_name, a.name as acceptor_name, f.name as finalizer_name
+      SELECT o.*, COALESCE(u.name, 'Usuário removido') as emitter_name, a.name as acceptor_name, f.name as finalizer_name
       FROM purchase_orders o
-      JOIN users u ON o.emitted_by = u.id
+      LEFT JOIN users u ON o.emitted_by = u.id
       LEFT JOIN users a ON o.accepted_by = a.id
       LEFT JOIN users f ON o.finalized_by = f.id
       ORDER BY o.created_at DESC
@@ -793,6 +830,16 @@ app.delete('/api/orders/:id', authenticateToken, requireAdmin, (req, res) => {
       db.prepare("DELETE FROM purchase_orders WHERE id = ?").run(id);
     })();
 
+    // Remove os documentos anexados (NF-e / Romaneio) para não deixar órfãos no disco
+    for (const fileName of [order.invoice_path, order.packing_slip_path]) {
+      if (fileName) {
+        const filePath = path.join(uploadsDir, fileName);
+        if (fs.existsSync(filePath)) {
+          try { fs.unlinkSync(filePath); } catch { /* ignora falha na limpeza */ }
+        }
+      }
+    }
+
     logAction(req.user.id, req.user.username, 'EXCLUIR_PEDIDO', `Excluiu o pedido de expedição #${id} da loja ${order.store_name}.`);
     res.json({ message: 'Pedido excluído com sucesso!' });
   } catch (err) {
@@ -800,64 +847,72 @@ app.delete('/api/orders/:id', authenticateToken, requireAdmin, (req, res) => {
   }
 });
 
-// Upload order files (Invoice or Packing Slip)
+// Upload order files (Invoice or Packing Slip) — multipart/form-data
 app.put('/api/orders/:id/upload', authenticateToken, (req, res) => {
-  const { id } = req.params;
-  const { type, fileData, fileName } = req.body;
-
-  if (!type || !fileData || !fileName) {
-    return res.status(400).json({ error: 'Dados de upload incompletos.' });
-  }
-
-  if (type !== 'invoice' && type !== 'packing_slip') {
-    return res.status(400).json({ error: 'Tipo de arquivo inválido.' });
-  }
-
-  try {
-    const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
-    if (!order) {
-      return res.status(404).json({ error: 'Pedido não encontrado.' });
-    }
-
-    if (!fileData.startsWith('data:')) {
-      return res.status(400).json({ error: 'Formato de arquivo inválido.' });
-    }
-    const base64Index = fileData.indexOf(';base64,');
-    if (base64Index === -1) {
-      return res.status(400).json({ error: 'Formato de arquivo inválido.' });
-    }
-
-    const base64Data = fileData.substring(base64Index + 8);
-    const buffer = Buffer.from(base64Data, 'base64');
-
-    const rawExt = fileName.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
-    const allowedExtensions = ['pdf', 'jpg', 'jpeg', 'png', 'webp', 'gif'];
-    if (!allowedExtensions.includes(rawExt)) {
-      return res.status(400).json({ error: 'Tipo de arquivo não permitido. Use PDF ou imagem (JPG, PNG, WEBP).' });
-    }
-    const ext = rawExt;
-    const savedName = `${type}-${id}-${Date.now()}.${ext}`;
-    const filePath = path.join(uploadsDir, savedName);
-    
-    fs.writeFileSync(filePath, buffer);
-
-    const columnName = type === 'invoice' ? 'invoice_path' : 'packing_slip_path';
-    db.prepare(`UPDATE purchase_orders SET ${columnName} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(savedName, id);
-
-    // Auto-extract 44-digit NFe key from fileName if type is invoice and key exists in filename
-    if (type === 'invoice') {
-      const keyMatch = fileName.match(/\b\d{44}\b/) || fileName.match(/\d{44}/);
-      if (keyMatch) {
-        db.prepare("UPDATE purchase_orders SET nfe_key = ? WHERE id = ?").run(keyMatch[0], id);
+  upload.single('file')(req, res, (uploadErr) => {
+    if (uploadErr) {
+      if (uploadErr.code === 'LIMIT_FILE_SIZE') {
+        return res.status(413).json({ error: `O arquivo deve ter no máximo ${MAX_UPLOAD_MB}MB.` });
       }
+      return res.status(400).json({ error: uploadErr.message || 'Erro ao processar o arquivo.' });
     }
 
-    logAction(req.user.id, req.user.username, 'UPLOAD_DOC', `Enviou ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} para o pedido #${id}`);
+    const { id } = req.params;
+    const { type } = req.body;
+    const tempPath = req.file ? req.file.path : null;
+    const discardTemp = () => {
+      if (tempPath && fs.existsSync(tempPath)) {
+        try { fs.unlinkSync(tempPath); } catch { /* ignora falha na limpeza */ }
+      }
+    };
 
-    res.json({ message: 'Arquivo enviado com sucesso!', fileName: savedName });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
+    if (!req.file || !type) {
+      discardTemp();
+      return res.status(400).json({ error: 'Dados de upload incompletos.' });
+    }
+
+    if (type !== 'invoice' && type !== 'packing_slip') {
+      discardTemp();
+      return res.status(400).json({ error: 'Tipo de arquivo inválido.' });
+    }
+
+    try {
+      const order = db.prepare("SELECT * FROM purchase_orders WHERE id = ?").get(id);
+      if (!order) {
+        discardTemp();
+        return res.status(404).json({ error: 'Pedido não encontrado.' });
+      }
+
+      const ext = req.file.originalname.split('.').pop().toLowerCase().replace(/[^a-z0-9]/g, '');
+      const savedName = `${type}-${id}-${Date.now()}.${ext}`;
+      fs.renameSync(tempPath, path.join(uploadsDir, savedName));
+
+      const columnName = type === 'invoice' ? 'invoice_path' : 'packing_slip_path';
+      // Remove o arquivo anterior para não acumular órfãos no disco
+      if (order[columnName]) {
+        const oldPath = path.join(uploadsDir, order[columnName]);
+        if (fs.existsSync(oldPath)) {
+          try { fs.unlinkSync(oldPath); } catch { /* ignora falha na limpeza */ }
+        }
+      }
+      db.prepare(`UPDATE purchase_orders SET ${columnName} = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?`).run(savedName, id);
+
+      // Auto-extract 44-digit NFe key from fileName if type is invoice and key exists in filename
+      if (type === 'invoice') {
+        const keyMatch = req.file.originalname.match(/\d{44}/);
+        if (keyMatch) {
+          db.prepare("UPDATE purchase_orders SET nfe_key = ? WHERE id = ?").run(keyMatch[0], id);
+        }
+      }
+
+      logAction(req.user.id, req.user.username, 'UPLOAD_DOC', `Enviou ${type === 'invoice' ? 'Nota Fiscal' : 'Romaneio'} para o pedido #${id}`);
+
+      res.json({ message: 'Arquivo enviado com sucesso!', fileName: savedName });
+    } catch (err) {
+      discardTemp();
+      res.status(500).json({ error: err.message });
+    }
+  });
 });
 
 // Manual update/save of NFe access key

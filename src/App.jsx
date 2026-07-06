@@ -12,6 +12,30 @@ import PurchaseOrder from './pages/PurchaseOrder';
 import DefectLabels from './pages/DefectLabels';
 import Logs from './pages/Logs';
 
+const isAuthenticated = () => {
+  return localStorage.getItem('armazem_auth') === 'true';
+};
+
+const ProtectedRoute = ({ children, allowReset = false, requireAdmin = false }) => {
+  if (!isAuthenticated()) {
+    return <Navigate to="/login" replace />;
+  }
+  const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
+  if (user.mustChangePassword && !allowReset) {
+    return <Navigate to="/reset-password" replace />;
+  }
+  if (!user.mustChangePassword && allowReset) {
+    return <Navigate to="/" replace />;
+  }
+  if (requireAdmin && !user.isAdmin) {
+    setTimeout(() => {
+      toast.error('Somente usuários administradores têm acesso.');
+    }, 0);
+    return <Navigate to="/" replace />;
+  }
+  return children;
+};
+
 function App() {
   useEffect(() => {
     const checkTokenExpiration = () => {
@@ -41,31 +65,6 @@ function App() {
     const interval = setInterval(checkTokenExpiration, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  // Simple auth check mock
-  const isAuthenticated = () => {
-    return localStorage.getItem('armazem_auth') === 'true';
-  };
-
-  const ProtectedRoute = ({ children, allowReset = false, requireAdmin = false }) => {
-    if (!isAuthenticated()) {
-      return <Navigate to="/login" replace />;
-    }
-    const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
-    if (user.mustChangePassword && !allowReset) {
-      return <Navigate to="/reset-password" replace />;
-    }
-    if (!user.mustChangePassword && allowReset) {
-      return <Navigate to="/" replace />;
-    }
-    if (requireAdmin && !user.isAdmin) {
-      setTimeout(() => {
-        toast.error('Somente usuários administradores têm acesso.');
-      }, 0);
-      return <Navigate to="/" replace />;
-    }
-    return children;
-  };
 
   return (
     <Router>

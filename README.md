@@ -141,7 +141,7 @@ Ao finalizar (`FINALIZADO` ou `ERRO`), as saídas de estoque são registradas au
 | PUT | `/api/orders/:id/status` | Atualiza status do pedido |
 | DELETE | `/api/orders/:id` | Remove pedido (admin) |
 | GET | `/api/orders/:id/history` | Histórico de movimentação |
-| PUT | `/api/orders/:id/upload` | Sobe NF-e ou Romaneio |
+| PUT | `/api/orders/:id/upload` | Sobe NF-e ou Romaneio (`multipart/form-data`: campos `type` e `file`; máx. 100MB) |
 | DELETE | `/api/orders/:id/upload/:type` | Remove documento |
 | PUT | `/api/orders/:id/nfe-key` | Atualiza chave de acesso NF-e |
 
@@ -174,13 +174,14 @@ Ao finalizar (`FINALIZADO` ou `ERRO`), as saídas de estoque são registradas au
 ## Segurança
 
 - **JWT** com expiração de 8h; token verificado no cliente a cada 5s
-- **Rate limiting** em memória: 300 req / 15 min por IP
+- **Rate limiting** em memória: 300 req / 15 min por IP (entradas expiradas são limpas periodicamente)
 - **Headers de segurança**: `X-Frame-Options`, `X-XSS-Protection`, `X-Content-Type-Options`, `HSTS`, `CSP`
-- **Senhas** com bcrypt (salt 10)
-- **Upload de arquivos**: somente PDF e imagens (JPG, PNG, WEBP, GIF); extensão validada no servidor
+- **Senhas** com bcrypt (salt 10); mensagem de login única (não revela se o usuário existe)
+- **Upload de arquivos**: somente PDF e imagens (JPG, PNG, WEBP, GIF); extensão validada no servidor; limite de 100MB por arquivo (multipart/form-data via multer, streaming direto pro disco)
+- **Corpo JSON** limitado a 2MB (uploads não passam pelo parser de JSON)
 - **CORS** restrito às origens definidas em `ALLOWED_ORIGINS`
 - **Queries** parametrizadas (sem concatenação de SQL com input de usuário)
-- **Validação de input** nos endpoints de criação de usuário (tamanho, charset)
+- **Validação de input** nos endpoints de criação de usuário e registro de saída de estoque
 - **Logs de auditoria** para todas as ações críticas
 
 ---
@@ -191,6 +192,32 @@ Ao finalizar (`FINALIZADO` ou `ERRO`), as saídas de estoque são registradas au
 # Gera os arquivos estáticos em /dist
 npm run build
 ```
+
+### Deploy (checklist)
+
+1. Configure `backend/.env` com `JWT_SECRET` forte e `ALLOWED_ORIGINS` apenas com o domínio real.
+2. Sirva o `/dist` por um servidor web (nginx, etc.) e faça proxy de `/api` para a porta do backend (padrão 3005).
+3. **nginx**: adicione `client_max_body_size 100M;` no bloco do proxy — sem isso o nginx bloqueia uploads grandes de NF-e/Romaneio antes de chegarem ao Node.
+4. Mantenha o backend vivo com um gerenciador de processos (ex.: PM2: `pm2 start server.js --name armazem`).
+5. Faça backup periódico de `backend/armazem.sqlite` e da pasta `backend/uploads/`.
+6. Use HTTPS no proxy (os headers HSTS já são enviados pelo backend).
+
+---
+
+## Comportamentos Importantes
+
+- **Uploads substituídos ou de pedidos excluídos são apagados do disco** — não ficam arquivos órfãos em `backend/uploads/`.
+- **Excluir um operador não apaga o histórico**: pedidos e saídas emitidos por ele continuam listados como "Usuário removido".
+- **Finalizar um pedido** (`FINALIZADO`/`ERRO`) gera saídas de estoque automaticamente; o "Desfazer" nos logs (admin) reverte o status e remove essas saídas.
+- **Lojas de destino são fixas no backend** (`allowedStores` em `server.js`) — para adicionar uma loja nova é preciso editar a lista lá e no frontend.
+
+## Melhorias Futuras (não bloqueiam o uso)
+
+- Paginação em `/api/logs` e `/api/exits` (hoje retornam tudo; ok para volume atual).
+- `GET /api/orders` faz uma query de itens por pedido (N+1); otimizar se a base crescer muito.
+- Lint do frontend acusa ~50 apontamentos estilísticos (imports não usados, padrões novos do React) — sem impacto funcional.
+- Cadastro de lojas em tabela própria em vez de lista fixa no código.
+- Testes automatizados (hoje a verificação é manual/smoke test).
 
 ---
 

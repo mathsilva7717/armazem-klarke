@@ -329,10 +329,14 @@ const PurchaseOrder = () => {
         doc.setFont('helvetica', 'bold');
         doc.setFontSize(9);
         doc.setTextColor(0, 0, 0);
-        doc.text(item.sku, 22, currentY + 6);
+        
+        // Truncate SKU to avoid overlapping with the Product Name column
+        const displaySku = item.sku.length > 13 ? item.sku.substring(0, 11) + '..' : item.sku;
+        doc.text(displaySku, 22, currentY + 6);
 
         doc.setFont('helvetica', 'normal');
-        const itemDesc = item.name.length > 50 ? item.name.substring(0, 47) + '...' : item.name;
+        // Reduce max length slightly for uppercase text to avoid overlapping Quantity column
+        const itemDesc = item.name.length > 45 ? item.name.substring(0, 42) + '...' : item.name;
         doc.text(itemDesc.toUpperCase(), 45, currentY + 6);
 
         doc.setFont('helvetica', 'bold');

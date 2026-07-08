@@ -95,7 +95,7 @@ const Dashboard = () => {
       return;
     }
 
-    if (item.path === '/deliveries' && userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque') {
+    if (item.path === '/deliveries' && userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque' && userRole !== 'gerencia') {
       toast.error('Acesso negado. Você não tem permissão para acessar a tela de expedição.');
       return;
     }
@@ -205,7 +205,13 @@ const Dashboard = () => {
         gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', 
         gap: '24px' 
       }}>
-        {menuItems.map((item, index) => (
+        {menuItems.filter(item => {
+          const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
+          if (item.path === '/deliveries' && !['admin', 'expedicao', 'estoque', 'gerencia'].includes(userRole)) {
+            return false;
+          }
+          return true;
+        }).map((item, index) => (
           <button
             key={item.path}
             onClick={() => handleItemClick(item)}

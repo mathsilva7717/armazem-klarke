@@ -528,6 +528,10 @@ const Deliveries = () => {
         doc.addImage(signatureImage, 'PNG', 65, signatureY - 22, 80, 24);
       }
 
+      const roleMap = { admin: 'Administrador', expedicao: 'Expedição', estoque: 'Estoque', gerencia: 'Gerência', lider_estoque: 'Líder de Estoque', operator: 'Operador' };
+      const emitterRoleKey = order.emitter_role || 'operator';
+      const emitterRole = roleMap[emitterRoleKey] || 'Operador';
+
       doc.setDrawColor(180, 180, 180);
       doc.line(60, signatureY, 150, signatureY);
 
@@ -544,7 +548,7 @@ const Deliveries = () => {
       doc.setFont('helvetica', 'bold');
       doc.setFontSize(7);
       doc.setTextColor(245, 158, 11);
-      doc.text("EMISSOR DO PEDIDO", 105, signatureY + 14, { align: 'center' });
+      doc.text(emitterRole.toUpperCase(), 105, signatureY + 14, { align: 'center' });
 
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(6.5);

@@ -689,7 +689,11 @@ app.post('/api/orders', authenticateToken, (req, res) => {
 app.get('/api/orders', authenticateToken, (req, res) => {
   try {
     const orders = db.prepare(`
-      SELECT o.*, COALESCE(u.name, 'Usuário removido') as emitter_name, a.name as acceptor_name, f.name as finalizer_name
+      SELECT o.*, 
+             COALESCE(u.name, 'Usuário removido') as emitter_name, 
+             u.role as emitter_role,
+             a.name as acceptor_name, 
+             f.name as finalizer_name
       FROM purchase_orders o
       LEFT JOIN users u ON o.emitted_by = u.id
       LEFT JOIN users a ON o.accepted_by = a.id

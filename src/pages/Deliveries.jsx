@@ -514,10 +514,19 @@ const Deliveries = () => {
       doc.line(60, signatureY, 150, signatureY);
 
       doc.setFont('helvetica', 'bold');
+      doc.setFontSize(9);
+      doc.setTextColor(100, 100, 100);
       doc.text("ASSINATURA DO RESPONSÁVEL", 105, signatureY + 5, { align: 'center' });
 
       doc.setFont('helvetica', 'normal');
+      doc.setFontSize(8);
+      doc.setTextColor(0, 0, 0);
       doc.text(emitterName, 105, signatureY + 10, { align: 'center' });
+
+      doc.setFont('helvetica', 'italic');
+      doc.setFontSize(6.5);
+      doc.setTextColor(160, 160, 160);
+      doc.text("Assinatura gerada digitalmente", 105, signatureY + 14, { align: 'center' });
 
       const totalPages = doc.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {

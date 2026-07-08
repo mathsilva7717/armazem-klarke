@@ -408,6 +408,11 @@ const PurchaseOrder = () => {
       doc.text(emitterName, 105, signatureY + 10, { align: 'center' });
 
       doc.setFont('helvetica', 'italic');
+      doc.setFontSize(6.5);
+      doc.setTextColor(160, 160, 160);
+      doc.text("Assinatura gerada digitalmente", 105, signatureY + 14, { align: 'center' });
+
+      doc.setFont('helvetica', 'italic');
       doc.setFontSize(7);
       doc.setTextColor(150, 150, 150);
       doc.text("Documento emitido eletronicamente via Sistema Klarke Logistics. Todos os direitos reservados.", 105, 285, { align: 'center' });

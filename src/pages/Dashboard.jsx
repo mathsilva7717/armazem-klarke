@@ -95,12 +95,12 @@ const Dashboard = () => {
       return;
     }
 
-    if (item.path === '/deliveries' && userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque' && userRole !== 'gerencia') {
+    if (item.path === '/deliveries' && userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque' && userRole !== 'gerencia' && userRole !== 'lider_estoque') {
       toast.error('Acesso negado. Você não tem permissão para acessar a tela de expedição.');
       return;
     }
 
-    if (item.path === '/purchase-order' && userRole !== 'admin' && userRole !== 'gerencia') {
+    if (item.path === '/purchase-order' && userRole !== 'admin' && userRole !== 'gerencia' && userRole !== 'lider_estoque') {
       toast.error('Acesso negado. Você não tem permissão para criar pedidos de compra.');
       return;
     }
@@ -168,7 +168,7 @@ const Dashboard = () => {
           <div>
             {(() => {
               const resolvedRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-              const roleMap = { admin: ['Administrador', 'var(--primary)', 'rgba(245,158,11,0.15)'], expedicao: ['Expedição', '#3b82f6', 'rgba(59,130,246,0.12)'], estoque: ['Estoque', '#22c55e', 'rgba(34,197,94,0.12)'], gerencia: ['Gerência', '#a855f7', 'rgba(168,85,247,0.12)'], operator: ['Operador', 'var(--text-muted)', 'rgba(255,255,255,0.05)'] };
+              const roleMap = { admin: ['Administrador', 'var(--primary)', 'rgba(245,158,11,0.15)'], expedicao: ['Expedição', '#3b82f6', 'rgba(59,130,246,0.12)'], estoque: ['Estoque', '#22c55e', 'rgba(34,197,94,0.12)'], gerencia: ['Gerência', '#a855f7', 'rgba(168,85,247,0.12)'], lider_estoque: ['Líder de Estoque', '#06b6d4', 'rgba(6,182,212,0.12)'], operator: ['Operador', 'var(--text-muted)', 'rgba(255,255,255,0.05)'] };
               const [label, color, bg] = roleMap[resolvedRole] || roleMap.operator;
               return (
                 <span style={{ fontSize: '0.72rem', padding: '5px 12px', fontWeight: '700', textTransform: 'uppercase', letterSpacing: '0.5px', color, background: bg, border: `1px solid ${color}` }}>
@@ -207,7 +207,10 @@ const Dashboard = () => {
       }}>
         {menuItems.filter(item => {
           const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-          if (item.path === '/deliveries' && !['admin', 'expedicao', 'estoque', 'gerencia'].includes(userRole)) {
+          if (item.path === '/deliveries' && !['admin', 'expedicao', 'estoque', 'gerencia', 'lider_estoque'].includes(userRole)) {
+            return false;
+          }
+          if (item.path === '/purchase-order' && !['admin', 'gerencia', 'lider_estoque'].includes(userRole)) {
             return false;
           }
           return true;

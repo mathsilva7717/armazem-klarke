@@ -77,7 +77,7 @@ const PurchaseOrder = () => {
 
   useEffect(() => {
     const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-    if (userRole !== 'admin' && userRole !== 'gerencia') {
+    if (userRole !== 'admin' && userRole !== 'gerencia' && userRole !== 'lider_estoque') {
       toast.error('Acesso negado. Você não tem permissão para criar pedidos de compra.');
       navigate('/');
     }

@@ -148,7 +148,8 @@ const Users = () => {
     if (currentRole === 'operator') newRole = 'expedicao';
     else if (currentRole === 'expedicao') newRole = 'estoque';
     else if (currentRole === 'estoque') newRole = 'gerencia';
-    else if (currentRole === 'gerencia') newRole = 'admin';
+    else if (currentRole === 'gerencia') newRole = 'lider_estoque';
+    else if (currentRole === 'lider_estoque') newRole = 'admin';
     else if (currentRole === 'admin') newRole = 'operator';
 
     const roleNames = {
@@ -156,6 +157,7 @@ const Users = () => {
       expedicao: 'Expedição',
       estoque: 'Estoque',
       gerencia: 'Gerência',
+      lider_estoque: 'Líder de Estoque',
       admin: 'Administrador'
     };
 
@@ -295,6 +297,7 @@ const Users = () => {
                   <option value="expedicao">Expedição (Visualização + Aceitar Pedidos)</option>
                   <option value="estoque">Estoque (Visualização + Finalizar Pedidos)</option>
                   <option value="gerencia">Gerência (Criar Pedidos de Compra)</option>
+                  <option value="lider_estoque">Líder de Estoque (Igual Gerência)</option>
                   <option value="admin">Administrador (Controle Total)</option>
                 </select>
               </div>
@@ -372,7 +375,9 @@ const Users = () => {
                                 ? 'rgba(34, 197, 94, 0.15)'
                                 : u.role === 'gerencia'
                                   ? 'rgba(168, 85, 247, 0.15)'
-                                  : 'rgba(255, 255, 255, 0.05)',
+                                  : u.role === 'lider_estoque'
+                                    ? 'rgba(6, 182, 212, 0.15)'
+                                    : 'rgba(255, 255, 255, 0.05)',
                           color: (u.role === 'admin' || (!u.role && u.is_admin))
                             ? 'var(--primary)'
                             : u.role === 'expedicao'
@@ -381,7 +386,9 @@ const Users = () => {
                                 ? '#22c55e'
                                 : u.role === 'gerencia'
                                   ? '#a855f7'
-                                  : 'var(--text-muted)',
+                                  : u.role === 'lider_estoque'
+                                    ? '#06b6d4'
+                                    : 'var(--text-muted)',
                           border: (u.role === 'admin' || (!u.role && u.is_admin))
                             ? '1px solid var(--primary)'
                             : u.role === 'expedicao'
@@ -390,7 +397,9 @@ const Users = () => {
                                 ? '1px solid #22c55e'
                                 : u.role === 'gerencia'
                                   ? '1px solid #a855f7'
-                                  : '1px solid var(--border)',
+                                  : u.role === 'lider_estoque'
+                                    ? '1px solid #06b6d4'
+                                    : '1px solid var(--border)',
                           cursor: u.username === 'admin' ? 'default' : 'pointer',
                           userSelect: 'none',
                           transition: 'all 0.2s ease',
@@ -407,7 +416,9 @@ const Users = () => {
                                   ? 'rgba(34, 197, 94, 0.3)'
                                   : r === 'gerencia'
                                     ? 'rgba(168, 85, 247, 0.3)'
-                                    : 'rgba(255, 255, 255, 0.15)';
+                                    : r === 'lider_estoque'
+                                      ? 'rgba(6, 182, 212, 0.3)'
+                                      : 'rgba(255, 255, 255, 0.15)';
                           }
                         }}
                         onMouseLeave={(e) => {
@@ -421,7 +432,9 @@ const Users = () => {
                                   ? 'rgba(34, 197, 94, 0.15)'
                                   : r === 'gerencia'
                                     ? 'rgba(168, 85, 247, 0.15)'
-                                    : 'rgba(255, 255, 255, 0.05)';
+                                    : r === 'lider_estoque'
+                                      ? 'rgba(6, 182, 212, 0.15)'
+                                      : 'rgba(255, 255, 255, 0.05)';
                           }
                         }}
                       >
@@ -433,7 +446,9 @@ const Users = () => {
                               ? 'Estoque' 
                               : u.role === 'gerencia' 
                                 ? 'Gerência' 
-                                : 'Operador'}
+                                : u.role === 'lider_estoque'
+                                  ? 'Líder de Estoque'
+                                  : 'Operador'}
                       </span>
                     </td>
                     <td style={{ padding: '12px', display: 'flex', gap: '16px', justifyContent: 'flex-end', alignItems: 'center' }}>

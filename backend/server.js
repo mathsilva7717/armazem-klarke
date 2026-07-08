@@ -471,7 +471,7 @@ app.post('/api/users', authenticateToken, requireAdmin, async (req, res) => {
   }
 
   const hashedPassword = bcrypt.hashSync(password, 10);
-  const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque'];
+  const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque', 'lider_estoque'];
   const userRole = validRoles.includes(role) ? role : 'operator';
   const isAdminVal = userRole === 'admin' ? 1 : 0;
   
@@ -541,7 +541,7 @@ app.put('/api/users/:id/role', authenticateToken, requireAdmin, (req, res) => {
     return res.status(403).json({ error: 'O cargo do administrador principal não pode ser alterado.' });
   }
 
-  const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque'];
+  const validRoles = ['admin', 'operator', 'expedicao', 'gerencia', 'estoque', 'lider_estoque'];
   if (!validRoles.includes(role)) {
     return res.status(400).json({ error: 'Cargo inválido.' });
   }
@@ -757,13 +757,13 @@ app.put('/api/orders/:id/status', authenticateToken, (req, res) => {
     const isAdmin = req.user.isAdmin;
 
     // Check permission for finishing (FINALIZADO / ERRO)
-    const allowedRolesForFinishing = ['admin', 'estoque', 'expedicao', 'gerencia'];
+    const allowedRolesForFinishing = ['admin', 'estoque', 'expedicao', 'gerencia', 'lider_estoque'];
     if ((status === 'FINALIZADO' || status === 'ERRO') && !allowedRolesForFinishing.includes(userRole) && !isAdmin) {
       return res.status(403).json({ error: 'Acesso negado. Apenas usuários dos cargos de estoque, expedição, gerência ou administradores podem finalizar pedidos.' });
     }
 
     // Check permission for other transitions
-    const allowedRolesForFulfillment = ['admin', 'estoque', 'expedicao', 'gerencia'];
+    const allowedRolesForFulfillment = ['admin', 'estoque', 'expedicao', 'gerencia', 'lider_estoque'];
     if (!allowedRolesForFulfillment.includes(userRole) && !isAdmin) {
       return res.status(403).json({ error: 'Acesso negado. Você não tem permissão para alterar o status dos pedidos.' });
     }

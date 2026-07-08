@@ -40,7 +40,7 @@ const Deliveries = () => {
 
   const user = JSON.parse(localStorage.getItem('armazem_user') || '{}');
   const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-  const canManageDeliveries = userRole === 'admin' || userRole === 'expedicao' || userRole === 'estoque' || userRole === 'gerencia';
+  const canManageDeliveries = userRole === 'admin' || userRole === 'expedicao' || userRole === 'estoque' || userRole === 'gerencia' || userRole === 'lider_estoque';
 
   const handleLogout = () => {
     localStorage.removeItem('armazem_auth');
@@ -52,7 +52,7 @@ const Deliveries = () => {
 
   useEffect(() => {
     const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-    if (userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque' && userRole !== 'gerencia') {
+    if (userRole !== 'admin' && userRole !== 'expedicao' && userRole !== 'estoque' && userRole !== 'gerencia' && userRole !== 'lider_estoque') {
       toast.error('Acesso negado. Você não tem permissão para acessar a tela de expedição.');
       navigate('/');
     }
@@ -147,7 +147,7 @@ const Deliveries = () => {
 
   const handleUpdateStatus = async (id, newStatus) => {
     const userRole = (user.role === 'admin' || user.isAdmin === true || user.is_admin === 1 || user.is_admin === true) ? 'admin' : (user.role || 'operator');
-    const allowedRolesForFinishing = ['admin', 'estoque', 'expedicao', 'gerencia'];
+    const allowedRolesForFinishing = ['admin', 'estoque', 'expedicao', 'gerencia', 'lider_estoque'];
     if ((newStatus === 'FINALIZADO' || newStatus === 'ERRO') && !allowedRolesForFinishing.includes(userRole)) {
       toast.error('Acesso negado. Apenas usuários dos cargos de estoque, expedição, gerência ou administradores podem finalizar pedidos.');
       return;

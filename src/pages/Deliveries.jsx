@@ -419,17 +419,24 @@ const Deliveries = () => {
 
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Número do Pedido:", 95, 49);
+          doc.text("Número do Pedido:", 80, 49);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(245, 158, 11);
-          doc.text(`#${order.id}`, 95, 54);
+          doc.text(`#${order.id}`, 80, 54);
 
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Data de Emissão:", 145, 49);
+          doc.text("Total de Itens:", 115, 49);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(245, 158, 11);
+          doc.text(`${order.items ? order.items.length : 0} itens`, 115, 54);
+
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Data de Emissão:", 150, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(orderDate, 145, 54);
+          doc.text(orderDate, 150, 54);
         } else {
           doc.setFont('helvetica', 'bold');
           doc.setFontSize(10);

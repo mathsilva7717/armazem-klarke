@@ -285,21 +285,29 @@ const PurchaseOrder = () => {
           doc.setTextColor(0, 0, 0);
           doc.text(orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Administrador'), 25, 54);
 
-          // Info centro (Order ID!)
+          // Info centro 1 (Order ID)
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Número do Pedido:", 95, 49);
+          doc.text("Número do Pedido:", 80, 49);
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(245, 158, 11);
-          doc.text(`#${orderId}`, 95, 54);
+          doc.text(`#${orderId}`, 80, 54);
+
+          // Info centro 2 (Itens)
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(80, 80, 80);
+          doc.text("Total de Itens:", 115, 49);
+          doc.setFont('helvetica', 'bold');
+          doc.setTextColor(245, 158, 11);
+          doc.text(`${items.length} itens`, 115, 54);
 
           // Info direita
           doc.setFont('helvetica', 'bold');
           doc.setTextColor(80, 80, 80);
-          doc.text("Data de Emissão:", 145, 49);
+          doc.text("Data de Emissão:", 150, 49);
           doc.setFont('helvetica', 'normal');
           doc.setTextColor(0, 0, 0);
-          doc.text(currentDate, 145, 54);
+          doc.text(currentDate, 150, 54);
         } else {
           // Cabeçalho simplificado nas páginas seguintes
           doc.setFont('helvetica', 'bold');

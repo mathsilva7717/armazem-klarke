@@ -14,6 +14,8 @@ const Labels = () => {
   const [name, setName] = useState(queryParams.get('name') || '');
   const [quantity, setQuantity] = useState(1);
   const [history, setHistory] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
   const barcodeRef = useRef(null);
   const canvasRef = useRef(null);
 
@@ -46,9 +48,10 @@ const Labels = () => {
   const addToHistory = (newCode, newName) => {
     const entry = { code: newCode, name: newName, date: new Date().toISOString() };
     const filtered = history.filter(h => h.code !== newCode);
-    const updatedHistory = [entry, ...filtered.slice(0, 9)];
+    const updatedHistory = [entry, ...filtered];
     setHistory(updatedHistory);
     localStorage.setItem('armazem_label_history', JSON.stringify(updatedHistory));
+    setCurrentPage(1);
   };
 
   const deleteFromHistory = (e, codeToDelete) => {
@@ -62,8 +65,12 @@ const Labels = () => {
   const clearHistory = () => {
     setHistory([]);
     localStorage.removeItem('armazem_label_history');
+    setCurrentPage(1);
     toast.success('Histórico de etiquetas limpo!');
   };
+
+  const totalPages = Math.ceil(history.length / ITEMS_PER_PAGE);
+  const currentHistory = history.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const handlePrint = () => {
     if (!code) {
@@ -248,7 +255,7 @@ const Labels = () => {
                 </button>
               </div>
               <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                {history.map(h => (
+                {currentHistory.map(h => (
                   <div 
                     key={h.code}
                     style={{ 
@@ -302,6 +309,28 @@ const Labels = () => {
                   </div>
                 ))}
               </div>
+              
+              {totalPages > 1 && (
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '16px' }}>
+                  <button 
+                    type="button" 
+                    disabled={currentPage === 1}
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    style={{ background: 'transparent', border: '1px solid var(--border)', padding: '4px 12px', color: currentPage === 1 ? 'var(--text-muted)' : 'var(--primary)', cursor: currentPage === 1 ? 'not-allowed' : 'pointer' }}
+                  >
+                    Anterior
+                  </button>
+                  <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Página {currentPage} de {totalPages}</span>
+                  <button 
+                    type="button" 
+                    disabled={currentPage === totalPages}
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    style={{ background: 'transparent', border: '1px solid var(--border)', padding: '4px 12px', color: currentPage === totalPages ? 'var(--text-muted)' : 'var(--primary)', cursor: currentPage === totalPages ? 'not-allowed' : 'pointer' }}
+                  >
+                    Próxima
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </form>

@@ -228,18 +228,18 @@ const PurchaseOrder = () => {
           // Logo e Cabeçalho
           let textXOffset = 20;
           if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', 20, 15, 35, 18);
-            textXOffset = 62;
+            doc.addImage(logoBase64, 'PNG', 20, 15, 28, 18);
+            textXOffset = 52;
           } else {
             // Fallback visualmente limpo caso não encontre loja.png
             doc.setDrawColor(colorAmber[0], colorAmber[1], colorAmber[2]);
             doc.setLineWidth(0.8);
-            doc.rect(20, 15, 35, 18);
+            doc.rect(20, 15, 28, 18);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
+            doc.setFontSize(7);
             doc.setTextColor(colorAmber[0], colorAmber[1], colorAmber[2]);
-            doc.text("KLA LOGÍSTICA", 37.5, 25, { align: 'center' });
-            textXOffset = 62;
+            doc.text("KLA LOGÍSTICA", 34, 25, { align: 'center' });
+            textXOffset = 52;
           }
 
           // Nome da Loja ao lado do Logo
@@ -248,11 +248,22 @@ const PurchaseOrder = () => {
           doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
           doc.text(storeName.toUpperCase(), textXOffset, 22);
 
-          // Título do Documento
+          let cnpjText = '';
+          if (storeName.includes('SÃO VICENTE')) {
+            cnpjText = 'CNPJ: 66.655.172/0001-01';
+          } else if (storeName.includes('PRAIA GRANDE')) {
+            cnpjText = 'CNPJ: 63.119.823/0001-50';
+          }
+
+          // Título do Documento e CNPJ
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           doc.setTextColor(120, 120, 120);
-          doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
+          if (cnpjText) {
+            doc.text(`${cnpjText}  |  SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA`, textXOffset, 27);
+          } else {
+            doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
+          }
 
           // Linha Divisória do Topo
           doc.setDrawColor(220, 220, 220);
@@ -389,6 +400,10 @@ const PurchaseOrder = () => {
       
       const emitterName = orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Operador do Armazém');
       
+      const roleMap = { admin: 'Administrador', expedicao: 'Expedição', estoque: 'Estoque', gerencia: 'Gerência', lider_estoque: 'Líder de Estoque', operator: 'Operador' };
+      const emitterRoleKey = orderEmitter ? (orderEmitter.role || 'operator') : (user.role || 'operator');
+      const emitterRole = roleMap[emitterRoleKey] || 'Operador';
+
       const signatureImage = generateSignatureImage(emitterName);
       if (signatureImage) {
         doc.addImage(signatureImage, 'PNG', 65, signatureY - 22, 80, 24);
@@ -407,10 +422,15 @@ const PurchaseOrder = () => {
       doc.setFontSize(8);
       doc.text(emitterName, 105, signatureY + 10, { align: 'center' });
 
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(245, 158, 11);
+      doc.text(emitterRole.toUpperCase(), 105, signatureY + 14, { align: 'center' });
+
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(6.5);
       doc.setTextColor(160, 160, 160);
-      doc.text("Assinatura gerada digitalmente", 105, signatureY + 14, { align: 'center' });
+      doc.text("Assinatura gerada digitalmente", 105, signatureY + 17.5, { align: 'center' });
 
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7);

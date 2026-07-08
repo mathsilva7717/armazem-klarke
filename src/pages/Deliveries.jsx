@@ -368,17 +368,17 @@ const Deliveries = () => {
         if (pageNumber === 1) {
           let textXOffset = 20;
           if (logoBase64) {
-            doc.addImage(logoBase64, 'PNG', 20, 15, 35, 18);
-            textXOffset = 62;
+            doc.addImage(logoBase64, 'PNG', 20, 15, 28, 18);
+            textXOffset = 52;
           } else {
             doc.setDrawColor(colorAmber[0], colorAmber[1], colorAmber[2]);
             doc.setLineWidth(0.8);
-            doc.rect(20, 15, 35, 18);
+            doc.rect(20, 15, 28, 18);
             doc.setFont('helvetica', 'bold');
-            doc.setFontSize(8);
+            doc.setFontSize(7);
             doc.setTextColor(colorAmber[0], colorAmber[1], colorAmber[2]);
-            doc.text("KLA LOGÍSTICA", 37.5, 25, { align: 'center' });
-            textXOffset = 62;
+            doc.text("KLA LOGÍSTICA", 34, 25, { align: 'center' });
+            textXOffset = 52;
           }
 
           doc.setFont('helvetica', 'bold');
@@ -386,10 +386,21 @@ const Deliveries = () => {
           doc.setTextColor(colorDark[0], colorDark[1], colorDark[2]);
           doc.text(order.store_name.toUpperCase(), textXOffset, 22);
 
+          let cnpjText = '';
+          if (order.store_name.includes('SÃO VICENTE')) {
+            cnpjText = 'CNPJ: 66.655.172/0001-01';
+          } else if (order.store_name.includes('PRAIA GRANDE')) {
+            cnpjText = 'CNPJ: 63.119.823/0001-50';
+          }
+
           doc.setFont('helvetica', 'normal');
           doc.setFontSize(9);
           doc.setTextColor(120, 120, 120);
-          doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
+          if (cnpjText) {
+            doc.text(`${cnpjText}  |  SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA`, textXOffset, 27);
+          } else {
+            doc.text("SOLICITAÇÃO INTERNA DE PEDIDO DE COMPRA", textXOffset, 27);
+          }
 
           doc.line(20, 38, 190, 38);
 
@@ -523,10 +534,15 @@ const Deliveries = () => {
       doc.setTextColor(0, 0, 0);
       doc.text(emitterName, 105, signatureY + 10, { align: 'center' });
 
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(7);
+      doc.setTextColor(245, 158, 11);
+      doc.text("EMISSOR DO PEDIDO", 105, signatureY + 14, { align: 'center' });
+
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(6.5);
       doc.setTextColor(160, 160, 160);
-      doc.text("Assinatura gerada digitalmente", 105, signatureY + 14, { align: 'center' });
+      doc.text("Assinatura gerada digitalmente", 105, signatureY + 17.5, { align: 'center' });
 
       const totalPages = doc.internal.getNumberOfPages();
       for (let i = 1; i <= totalPages; i++) {

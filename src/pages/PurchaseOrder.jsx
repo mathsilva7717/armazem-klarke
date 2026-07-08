@@ -132,6 +132,35 @@ const PurchaseOrder = () => {
     toast.success('Produto removido do pedido.');
   };
 
+  const generateSignatureImage = (name) => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 400;
+    canvas.height = 120;
+    const ctx = canvas.getContext('2d');
+    
+    let hash = 0;
+    for (let i = 0; i < name.length; i++) {
+      hash = name.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    
+    const angle = ((hash % 10) - 5) * (Math.PI / 180);
+    const scale = 1 + ((hash % 20) - 10) / 100;
+    const color = Math.abs(hash % 2) === 0 ? '#1e3a8a' : '#0f172a'; // Blue or dark gray
+    
+    ctx.translate(200, 60);
+    ctx.rotate(angle);
+    ctx.scale(scale, scale);
+    
+    ctx.font = 'italic 46px "Brush Script MT", "Lucida Handwriting", "Bradley Hand", cursive';
+    ctx.fillStyle = color;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    
+    ctx.fillText(name, 0, 0);
+    
+    return canvas.toDataURL('image/png');
+  };
+
   const getBase64ImageFromUrl = async (url) => {
     try {
       const res = await fetch(url);
@@ -357,6 +386,14 @@ const PurchaseOrder = () => {
       doc.line(190, pageTableStartY, 190, currentY);
 
       const signatureY = Math.max(240, currentY + 15);
+      
+      const emitterName = orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Operador do Armazém');
+      
+      const signatureImage = generateSignatureImage(emitterName);
+      if (signatureImage) {
+        doc.addImage(signatureImage, 'PNG', 65, signatureY - 22, 80, 24);
+      }
+
       doc.setDrawColor(180, 180, 180);
       doc.setLineWidth(0.4);
       doc.line(60, signatureY, 150, signatureY);
@@ -368,7 +405,7 @@ const PurchaseOrder = () => {
 
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(8);
-      doc.text(orderEmitter ? (orderEmitter.name || orderEmitter.username) : (user.name || user.username || 'Operador do Armazém'), 105, signatureY + 10, { align: 'center' });
+      doc.text(emitterName, 105, signatureY + 10, { align: 'center' });
 
       doc.setFont('helvetica', 'italic');
       doc.setFontSize(7);
